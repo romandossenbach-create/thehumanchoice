@@ -1,0 +1,1 @@
+ALTER TABLE `athletes` ADD `training_log_public_scope` text DEFAULT 'all' NOT NULL;

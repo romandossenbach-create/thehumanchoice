@@ -1,0 +1,1 @@
+ALTER TABLE `athletes` ADD `gender` text DEFAULT 'male' NOT NULL;

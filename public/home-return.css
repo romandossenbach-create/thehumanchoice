@@ -1,0 +1,10 @@
+/* Keep the return-to-dashboard control visible beside the shared menu. */
+body.thc-menu-ready .global .home-button {
+  display: flex !important;
+}
+
+.thc-menu-ready .global,
+.thc-menu-ready .global-tools {
+  padding-left: 68px !important;
+}
+

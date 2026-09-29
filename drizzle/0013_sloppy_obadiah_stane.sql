@@ -1,0 +1,1 @@
+ALTER TABLE `athletes` ADD `training_log_public` integer DEFAULT false NOT NULL;

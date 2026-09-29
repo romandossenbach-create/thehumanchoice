@@ -1,0 +1,1 @@
+ALTER TABLE `athletes` ADD `birth_date` text DEFAULT '' NOT NULL;

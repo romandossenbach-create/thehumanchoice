@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>YOUR CHOICE · Your Push-up Challenge</title>
+    <meta
+      name="description"
+      content="Deine freie Push-up-Challenge: Wähle Tage und Ziel selbst und übertrage deine Ergebnisse zu THE.HUMAN.CHOICE."
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%2345e07b'/%3E%3Cpath d='M10 27h12v-7h7v24h-7v-9H10zm44 0H42v-7h-7v24h7v-9h12zM29 29h6v9h-6z' fill='%23080d0a'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="/shared-menu.css" />
+    <link rel="stylesheet" href="/home-return.css" />
+  </head>
+  <body>
+    <header class="global">
+      <div class="global-actions"></div>
+      <nav hidden><a href="/athletes" id="statsLink">Statistik</a><a href="/road-to-100/index.html" id="roadLink">Road to 100</a><button id="motivationButton" type="button">Motivation</button></nav>
+    </header>
+    <dialog class="help-dialog" id="helpDialog" aria-labelledby="helpTitle"><div class="help-dialog-inner"><header class="help-dialog-head"><h2 id="helpTitle">Push-up Challenge – Hilfe</h2><button class="help-close" id="closeHelp" type="button" aria-label="Hilfe schließen">×</button></header><div class="help-dialog-body"><ol><li>Lege die Anzahl Tage und dein Push-up-Ziel fest.</li><li>Tippe für einzelne Wiederholungen oder schreibe die Anzahl eines fertigen Satzes ein.</li><li>Speichere das Training. Der Wert wird automatisch mit THE.HUMAN.CHOICE und deiner Statistik verbunden.</li><li>Unter „Gespeicherte Einträge“ kannst du Werte korrigieren oder löschen.</li><li>Eine noch nicht gespeicherte Eingabe kannst du jederzeit zurücksetzen.</li></ol></div></div></dialog>
+    <section class="auth-card" id="authCard">
+      <h1 id="authTitle">Anmelden</h1>
+      <p id="sameAccount">Verwende dasselbe Konto wie bei THE.HUMAN.CHOICE.</p>
+      <form id="authForm">
+        <label
+          ><span id="emailLabel">E-Mail</span
+          ><input
+            id="email"
+            type="email"
+            autocomplete="email"
+            required /></label
+        ><label
+          ><span id="passwordLabel">Passwort</span
+          ><input
+            id="password"
+            type="password"
+            minlength="8"
+            autocomplete="current-password"
+            required /></label
+        ><label class="health" id="healthRow" hidden
+          ><input id="health" type="checkbox" /><span id="healthText"
+            >Ich trainiere nur schmerzfrei.</span
+          ></label
+        ><button class="primary" id="authSubmit">Anmelden</button
+        ><button class="text-button" id="authSwitch" type="button">
+          Neues Konto erstellen
+        </button>
+        <p class="message" id="authMessage"></p>
+      </form>
+    </section>
+    <div class="account hidden-account" id="account" hidden>
+      <span
+        ><span id="signedIn">Angemeldet als</span>
+        <strong id="accountEmail"></strong
+      ></span>
+      <div>
+        <button id="logout">Abmelden</button
+        >
+      </div>
+    </div>
+    <main id="training" hidden>
+      <section class="profile card" id="profile" hidden>
+        <h2 id="profileTitle">Athletenprofil vervollständigen</h2>
+        <p id="profileInfo">
+          Diese Angaben werden auch für THE.HUMAN.CHOICE verwendet.
+        </p>
+        <div class="profile-grid">
+          <input id="firstName" placeholder="Vorname" /><input
+            id="lastName"
+            placeholder="Nachname"
+          /><input id="country" placeholder="Land" /><select id="gender">
+            <option value="male">Männlich</option>
+            <option value="female">Weiblich</option>
+          </select>
+        </div>
+        <button class="primary" id="saveProfile">Profil übernehmen</button>
+      </section>
+      <link rel="stylesheet" href="compact-counter.css" />
+      <section class="counter counter-top">
+        <div class="input-control-row">
+        <div class="entry-row">
+          <div class="manual corporate-entry">
+            <span class="current-label" id="pendingLabel">Aktuell</span>
+            <input id="manualCount" type="number" min="1" inputmode="numeric" placeholder="0" aria-label="Aktuelle Push-ups" />
+          </div>
+          <div class="entry-side-actions">
+            <label class="video-proof-button" id="videoProofButton" title="Video-Nachweis hinzufügen" aria-label="Video-Nachweis hinzufügen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 13 5 3V8l-5 3z"/><rect x="3" y="6" width="13" height="12" rx="2"/></svg><input id="videoProof" type="file" accept="video/mp4,video/webm,video/quicktime" /></label>
+            <button class="entry-reset-button" id="resetPending" type="button" aria-label="Eingabe zurücksetzen" title="Eingabe zurücksetzen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6"/></svg></button>
+          </div>
+          <span id="pending" class="visually-hidden">0</span>
+        </div>
+        <aside class="entry-utility-tools" aria-label="Sprache und Hilfe">
+          <label class="language-circle" title="Sprache wählen" aria-label="Sprache wählen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg><select id="language" aria-label="Sprache"><option value="de">Deutsch</option><option value="en">English</option><option value="fr">Français</option><option value="es">Español</option><option value="it">Italiano</option><option value="pt">Português</option><option value="bg">Български</option><option value="tr">Türkçe</option><option value="hu">Magyar</option><option value="ar">العربية</option></select></label>
+          <button class="help-circle" id="openHelp" type="button" aria-label="Hilfe öffnen" title="Hilfe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 5.2 2c-1.2 1-2.3 1.5-2.3 3M12 18h.01"/></svg></button>
+        </aside>
+        </div>
+        <button class="save-workout" id="saveWorkout" type="button">Training speichern</button>
+        <p class="message" id="saveMessage"></p>
+      </section>
+      <section class="challenge card">
+        <h2 id="challengeTitle">Deine Challenge festlegen</h2>
+        <div class="challenge-fields">
+          <label
+            ><span id="daysLabel">Anzahl Tage</span
+            ><input
+              id="days"
+              type="number"
+              min="1"
+              max="3650"
+              inputmode="numeric"
+              placeholder="z. B. 100" /></label
+          ><label
+            ><span id="targetLabel">Push-up-Ziel</span
+            ><input
+              id="target"
+              type="number"
+              min="1"
+              max="100000000"
+              inputmode="numeric"
+              placeholder="z. B. 100000" /></label
+          ><button class="primary" id="saveChallenge">Challenge starten</button>
+          <label id="startDateRow" hidden><span>Startdatum</span><input id="startDate" type="date" /></label>
+        </div>
+      </section>
+      <section class="stats">
+        <article>
+          <span id="dailyTargetLabel">Tagesziel</span
+          ><strong id="dailyTarget">–</strong>
+        </article>
+        <article>
+          <span id="todayLabel">Heute</span><strong id="today">0</strong>
+        </article>
+        <article>
+          <span id="totalLabel">Gesamt</span><strong id="total">0</strong>
+        </article>
+        <article>
+          <span id="remainingLabel">Noch offen</span
+          ><strong id="remaining">–</strong>
+        </article>
+        <article>
+          <span id="daysLeftLabel">Verbleibende Tage</span
+          ><strong id="daysLeft">–</strong>
+        </article>
+      </section>
+      <section class="progress card">
+        <div>
+          <span id="progressLabel">Challenge-Fortschritt</span
+          ><strong id="progressText">0 %</strong>
+        </div>
+        <div class="bar"><i id="progressBar"></i></div>
+      </section>
+      <section class="entries card">
+        <div class="entries-head"><h2 id="entriesTitle">Gespeicherte Einträge</h2><button id="resetChallenge" type="button">Challenge löschen</button></div>
+        <p class="entries-empty" id="entriesEmpty">Noch keine gespeicherten Einträge.</p>
+        <div class="entries-list" id="entriesList"></div>
+      </section>
+    </main>
+    <section class="motivation-page" id="motivationPage" hidden>
+      <div class="motivation-toolbar">
+        <button id="backTraining">← Zurück zum Training</button>
+      </div>
+      <header>
+        <p class="eyebrow" id="motivationEyebrow">MOTIVATION</p>
+        <h1 id="motivationTitle">Stärke beginnt im Kopf.</h1>
+        <p id="motivationIntro">
+          60 Gedanken für Disziplin, Geduld und deinen nächsten sauberen
+          Push-up.
+        </p>
+      </header>
+      <details>
+        <summary>
+          <b>10</b><span id="goldenTitle">Die zehn goldenen Regeln</span>
+        </summary>
+        <ol id="goldenList"></ol>
+      </details>
+      <div class="motivation-grid" id="motivationGrid"></div>
+    </section>
+    <script src="/shared-menu.js"></script>
+    <script src="/voice-number-input.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

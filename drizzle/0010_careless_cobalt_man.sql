@@ -1,0 +1,1 @@
+ALTER TABLE `road_plans` ADD `adaptive_json` text DEFAULT '{}' NOT NULL;

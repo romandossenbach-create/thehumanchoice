@@ -1,0 +1,1 @@
+ALTER TABLE `athletes` ADD `owner_user_id` text DEFAULT '' NOT NULL;

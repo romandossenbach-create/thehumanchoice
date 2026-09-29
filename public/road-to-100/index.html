@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>Road to 100 · Roman Dossenbach</title>
+    <meta
+      name="description"
+      content="Dein persönlicher 60-Tage-Plan für 100 saubere Push-ups am Stück."
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23ffea00'/%3E%3Cpath d='M9 27h12v-7h7v24h-7v-9H9zm46 0H43v-7h-7v24h7v-9h12zM28 29h8v9h-8z' fill='%230a0d10'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="auth.css" />
+    <link rel="stylesheet" href="/shared-menu.css" />
+    <style>
+      :root {
+        --yellow: #ffea00;
+        --green: #45e07b;
+        --bg: #17272d;
+        --card: #17252a;
+        --line: #334a51;
+        --text: #f6f7f5;
+        --muted: #99a4ae;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at 12% 0%, rgba(55, 125, 132, 0.3), transparent 36%),
+          radial-gradient(circle at 88% 26%, rgba(91, 124, 76, 0.18), transparent 34%),
+          linear-gradient(145deg, #182a31 0%, #20383f 48%, #17272e 100%);
+        background-attachment: fixed;
+        color: var(--text);
+        font-family:
+          "Trebuchet MS",
+          "Avenir Next",
+          Avenir,
+          "Segoe UI",
+          sans-serif;
+      }
+      .app {
+        max-width: 780px;
+        margin: auto;
+        padding: 18px 15px 100px;
+      }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .logo {
+        font-size: 0.92rem;
+        font-weight: 950;
+        letter-spacing: -0.04em;
+      }
+      .logo b {
+        color: var(--yellow);
+      }
+      .day {
+        border: 1px solid #47515b;
+        border-radius: 99px;
+        padding: 8px 12px;
+        color: #c5ccd1;
+        font-size: 0.85rem;
+      }
+      .nav-btn {
+        border: 1px solid #606b75;
+        background: #171d23;
+        color: #fff;
+        border-radius: 99px;
+        padding: 8px 12px;
+        font-weight: 850;
+        cursor: pointer;
+      }
+      .hero {
+        padding: 4px 0 2px;
+      }
+      .eyebrow {
+        color: var(--yellow);
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-size: 0.73rem;
+        font-weight: 900;
+      }
+      .hero h1 {
+        font-size: clamp(1.125rem, 5.5vw, 2.3rem);
+        line-height: 0.88;
+        letter-spacing: -0.07em;
+        margin: 5px 0;
+      }
+      .hero p {
+        margin: 0;
+        color: #d3d9d5;
+        max-width: 540px;
+        font-size: .78rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 17px;
+      }
+      .coach-card { background:linear-gradient(145deg,rgba(25,54,59,.96),rgba(20,35,40,.98)); border-color:#4b6a6c; }
+      .coach-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+      .coach-title { display:flex; align-items:center; gap:10px; margin:0; font-size:1.25rem; }
+      .coach-icon { width:38px; height:38px; display:grid; place-items:center; border-radius:12px; color:#102000; background:#c9ff3d; font-size:1.2rem; }
+      .profile-pill { border:1px solid #708e78; border-radius:99px; padding:7px 10px; color:#dfffa0; background:rgba(201,255,61,.07); font-size:.75rem; font-weight:900; text-align:center; }
+      .coach-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:15px; }
+      .coach-stat { min-width:0; padding:12px 10px; border:1px solid #345159; border-radius:14px; background:rgba(5,13,16,.38); }
+      .coach-stat span { display:block; color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.07em; }
+      .coach-stat strong { display:block; margin-top:4px; color:#fff; font-size:1.12rem; }
+      .coach-reason { margin:13px 0 0; padding:16px 17px; border-left:4px solid #c9ff3d; border-radius:0 12px 12px 0; color:#f3f8f6; background:#193b3d; font-size:1.12rem; line-height:1.62; }
+      .road-help { margin:14px 0; border:1px solid #567077; border-radius:14px; background:#14262c; overflow:hidden; }
+      .road-help summary { padding:14px 16px; color:#c9ff3d; font-size:1.05rem; font-weight:900; cursor:pointer; }
+      .road-help ol { margin:0; padding:0 22px 16px 40px; color:#eef5f2; font-size:1rem; line-height:1.6; }
+      .training-explanation { font-size:1.05rem!important; line-height:1.6!important; color:#eaf2ef!important; }
+      .readiness { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:12px; }
+      .readiness label { color:var(--muted); font-size:.75rem; font-weight:800; }
+      .readiness select { width:100%; min-height:42px; margin-top:5px; padding:0 9px; border:1px solid #40575d; border-radius:11px; color:#fff; background:#0d191d; }
+      .curve { margin-top:13px; padding:11px; border:1px solid #345159; border-radius:15px; background:#0d171b; }
+      .curve-top { display:flex; justify-content:space-between; gap:10px; color:var(--muted); font-size:.76rem; }
+      .curve svg { display:block; width:100%; height:92px; margin-top:6px; overflow:visible; }
+      .curve-grid { stroke:#294047; stroke-width:1; }
+      .curve-line { fill:none; stroke:#c9ff3d; stroke-width:4; stroke-linecap:round; stroke-linejoin:round; }
+      .curve-empty { color:var(--muted); font-size:.82rem; padding:24px 0; text-align:center; }
+      .pause-banner { display:none; margin:10px 0 0; padding:12px; border:1px solid #c78e36; border-radius:13px; color:#ffe1a5; background:#291d0d; text-align:center; font-weight:900; }
+      .pause-banner.show { display:block; }
+      #pauseCountdown { display:block; color:#ffd45c; font-size:48px; line-height:1; animation:pausePulse .8s ease-in-out infinite alternate; }
+      .pause-banner.ready { border-color:#45e07b; color:#45e07b; background:#10271a; }
+      .pause-banner.ready #pauseCountdown { color:#45e07b; animation:none; }
+      @keyframes pausePulse { from { opacity:.45; text-shadow:0 0 0 rgba(255,212,92,0); } to { opacity:1; text-shadow:0 0 18px rgba(255,212,92,.72); } }
+      .wide {
+        grid-column: 1/-1;
+      }
+      .label {
+        font-size: 0.76rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .num {
+        font-size: 2rem;
+        font-weight: 950;
+        letter-spacing: -0.05em;
+        margin-top: 4px;
+      }
+      .num span {
+        color: var(--green);
+      }
+      .bar {
+        height: 12px;
+        background: #303840;
+        border-radius: 20px;
+        overflow: hidden;
+        margin-top: 12px;
+      }
+      .bar i {
+        height: 100%;
+        display: block;
+        background: linear-gradient(90deg, var(--green), var(--yellow));
+        width: 0;
+        transition: 0.4s;
+      }
+      .section-title {
+        font-size: 1.06rem;
+        margin: 23px 2px 9px;
+        letter-spacing: -0.01em;
+      }
+      .setup {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+      }
+      .setup input {
+        min-width: 0;
+        background: #090d11;
+        color: white;
+        border: 1px solid #3a4650;
+        border-radius: 14px;
+        padding: 14px;
+        font-size: 1rem;
+      }
+      .btn {
+        border: 0;
+        background: var(--yellow);
+        color: #080a0c;
+        border-radius: 14px;
+        padding: 12px 17px;
+        font-weight: 900;
+        font-size: 0.96rem;
+        cursor: pointer;
+      }
+      #saveMax { min-height:38px; padding:8px 12px; font-size:.84rem; }
+      .sub {
+        font-size: 0.9rem;
+        color: var(--muted);
+        line-height: 1.5;
+        margin-top: 10px;
+      }
+      .sets {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 9px;
+      }
+      .set {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid var(--line);
+        background: #11171c;
+        color: white;
+        border-radius: 16px;
+        padding: 14px;
+        text-align: left;
+        cursor: pointer;
+      }
+      .set.done {
+        border-color: #4d6e18;
+        background: #1b2516;
+      }
+      .set strong {
+        font-size: 1.25rem;
+      }
+      .check {
+        width: 25px;
+        height: 25px;
+        border: 2px solid #59636b;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+      }
+      .set.done .check {
+        background: var(--green);
+        border-color: var(--green);
+        color: #07100a;
+      }
+      .reward {
+        position: relative;
+        overflow: hidden;
+      }
+      .reward.locked .reward-text {
+        filter: blur(7px);
+        color: #6d767d;
+      }
+      .reward-text {
+        font-size: 1.2rem;
+        font-weight: 800;
+        line-height: 1.45;
+        margin-top: 8px;
+      }
+      .tech {
+        display: grid;
+        gap: 12px;
+      }
+      .tech video {
+        width: 100%;
+        border-radius: 15px;
+        max-height: 420px;
+        background: black;
+      }
+      .rules {
+        display: grid;
+        gap: 9px;
+      }
+      .rule {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .badge {
+        min-width: 30px;
+        height: 30px;
+        background: #232b31;
+        color: var(--yellow);
+        border-radius: 9px;
+        display: grid;
+        place-items: center;
+        font-weight: 900;
+      }
+      .rule p {
+        margin: 2px 0;
+        color: #d4dad6;
+        line-height: 1.4;
+      }
+      .danger {
+        border: 0;
+        background: none;
+        color: #89939b;
+        text-decoration: underline;
+        margin: 28px 3px 0;
+      }
+      .celebrate {
+        position: fixed;
+        inset: 0;
+        background: rgba(4, 6, 8, 0.9);
+        display: none;
+        place-items: center;
+        padding: 18px;
+        z-index: 10;
+      }
+      .celebrate.show {
+        display: grid;
+      }
+      .modal {
+        max-width: 500px;
+        text-align: center;
+        background: radial-gradient(circle at top, #354013, #13181e 60%);
+        border: 1px solid #708018;
+        border-radius: 28px;
+        padding: 30px 22px;
+      }
+      .modal h2 {
+        font-size: 1.8rem;
+        margin: 8px;
+      }
+      .modal p {
+        font-size: 1.12rem;
+        line-height: 1.45;
+      }
+      .medal {
+        font-size: 3rem;
+      }
+      .motivation-page {
+        display: none;
+        max-width: 780px;
+        margin: auto;
+        padding: 18px 15px 100px;
+      }
+      .show-motivation #app {
+        display: none;
+      }
+      .show-motivation .motivation-page {
+        display: block;
+      }
+      .motivation-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 22px;
+      }
+      .language-select {
+        background: #13181e;
+        color: #fff;
+        border: 1px solid #47515b;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 750;
+      }
+      .motivation-hero {
+        padding: 25px 2px 20px;
+      }
+      .motivation-hero h1 {
+        font-size: clamp(2.3rem, 10vw, 4.7rem);
+        line-height: 0.94;
+        letter-spacing: -0.065em;
+        margin: 9px 0 13px;
+      }
+      .motivation-hero p {
+        color: #bac3ca;
+        line-height: 1.55;
+        max-width: 600px;
+      }
+      .golden {
+        background: linear-gradient(135deg, #201f10, #13181e);
+        border: 1px solid #625d1a;
+        border-radius: 20px;
+        margin-bottom: 14px;
+        overflow: hidden;
+      }
+      .golden summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 19px;
+        font-size: 1.1rem;
+        font-weight: 900;
+      }
+      .golden summary::-webkit-details-marker {
+        display: none;
+      }
+      .golden summary b {
+        display: inline-grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: var(--yellow);
+        color: #090c10;
+        margin-right: 10px;
+      }
+      .golden ol {
+        margin: 0;
+        padding: 0 18px 18px;
+        list-style: none;
+        counter-reset: gold;
+      }
+      .golden li {
+        counter-increment: gold;
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        gap: 11px;
+        padding: 13px 0;
+        border-top: 1px solid #353723;
+      }
+      .golden li:before {
+        content: counter(gold);
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 9px;
+        background: #2b2d19;
+        color: var(--yellow);
+        font-weight: 900;
+      }
+      .golden strong {
+        display: block;
+        margin-bottom: 5px;
+      }
+      .golden p {
+        margin: 0;
+        color: #bdc5c9;
+        line-height: 1.45;
+      }
+      .motivation-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .quote-card {
+        display: grid;
+        grid-template-columns: 42px 1fr;
+        gap: 10px;
+        align-items: start;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 16px;
+      }
+      .quote-card span {
+        color: var(--yellow);
+        font-weight: 950;
+      }
+      .quote-card p {
+        margin: 0;
+        font-size: 1.04rem;
+        line-height: 1.45;
+      }
+      @media (min-width: 650px) {
+        .app {
+          padding-top: 28px;
+        }
+        .grid {
+          grid-template-columns: 1fr 1fr 1.5fr;
+        }
+        .wide {
+          grid-column: auto;
+        }
+        .sets {
+          grid-template-columns: repeat(5, 1fr);
+        }
+        .set {
+          display: block;
+          text-align: center;
+        }
+        .check {
+          margin: 9px auto 0;
+        }
+        .motivation-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 540px) {
+        .top {
+          align-items: flex-start;
+        }
+        .top-actions {
+          flex-direction: column;
+          align-items: flex-end;
+        }
+        .nav-btn,
+        .day {
+          font-size: 0.78rem;
+        }
+        .coach-grid { grid-template-columns:1fr 1fr; }
+        .readiness { grid-template-columns:1fr; }
+      }
+      .global-tools {
+        max-width: 780px;
+        margin: 0 auto;
+        padding: 7px 15px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+      }
+      .app-link {
+        min-height: 42px;
+        border: 1px solid #47515b;
+        border-radius: 11px;
+        background: var(--card);
+        color: #fff;
+        padding: 0 13px;
+        font-size: 0.88rem;
+        font-weight: 700;
+      }
+      .app-link {
+        text-decoration: none;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .global-actions { display: flex; align-items: center; gap: 9px; }
+      .road-module-nav { display:grid; grid-template-columns:repeat(4,44px); align-items:center; gap:18px; }
+      .road-module-icon { width:44px; height:44px; display:grid; place-items:center; border:2px solid currentColor; border-radius:50%; color:#fff; text-decoration:none; box-shadow:inset 2px 2px 5px rgba(255,255,255,.14),0 6px 15px rgba(0,0,0,.2); }
+      .road-module-icon svg { width:22px; height:22px; }
+      .road-module-icon.dashboard { border-color:#62b9e6; background:linear-gradient(145deg,#398fc2,#155b88); }
+      .road-module-icon.statistics { border-color:#9db5ba; background:linear-gradient(145deg,#426c78,#203e49); }
+      .road-module-slot { width:44px; height:44px; }
+      .road-module-icon.challenge { border-color:#ffe15e; color:#fff3b2; background:linear-gradient(145deg,#d8a91e,#79510a); }
+      .road-module-icon[href]:hover,.road-module-icon[href]:focus-visible { filter:brightness(1.12); outline:2px solid #fff; outline-offset:2px; }
+      body.thc-menu-ready .global-tools { padding-left:15px!important; }
+      body:has(.road-module-nav)>.thc-menu-button { display:none; }
+      .home-button { min-height:44px; padding:0 13px; display:flex; align-items:center; gap:7px; border:1px solid #789083; border-radius:12px; color:var(--text); background:var(--card); text-decoration:none; font-size:.88rem; font-weight:850; white-space:nowrap; }
+      .home-button:hover,.home-button:focus-visible { border-color:#c9ff3d; outline:none; }
+      .language-circle,.help-circle { position: relative; width: 44px; height: 44px; display: grid; place-items: center; flex: 0 0 44px; border: 0; border-radius: 12px; color: #d7ffe4; background: linear-gradient(145deg,#173f31,#102920); box-shadow:inset 2px 2px 5px rgba(255,255,255,.07); cursor: pointer; }
+      .language-circle svg,.help-circle svg { width:23px; height:23px; }
+      .language-circle:hover,.language-circle:focus-within,.help-circle:hover,.help-circle:focus-visible { color:#eaff3f; outline:2px solid #eaff3f; outline-offset:2px; }
+      .language-circle select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+      .help-dialog { width:min(560px,calc(100vw - 24px)); max-height:min(82dvh,720px); padding:0; border:1px solid #5d777b; border-radius:20px; color:var(--text); background:#14262c; box-shadow:0 22px 70px rgba(0,0,0,.58); overflow:hidden; }
+      .help-dialog::backdrop { background:rgba(4,10,12,.78); }
+      .help-dialog-inner { max-height:min(82dvh,720px); display:flex; flex-direction:column; }
+      .help-dialog-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px; border-bottom:1px solid #40575d; }
+      .help-dialog-head h2 { margin:0; font-size:1.2rem; }
+      .help-close { width:40px; height:40px; border:0; border-radius:50%; color:#fff; background:#263d43; font-size:1.4rem; cursor:pointer; }
+      .help-dialog-body { min-height:0; padding:16px 20px 22px; overflow:auto; overscroll-behavior:contain; font-size:1rem; line-height:1.6; }
+      .help-dialog-body ol { margin:0; padding-left:1.35rem; }
+      .reminder-card { margin-top:14px; display:flex; align-items:center; justify-content:space-between; gap:14px; }
+      .reminder-copy strong,.reminder-copy span { display:block; }
+      .reminder-copy span { margin-top:4px; color:var(--muted); font-size:.86rem; line-height:1.4; }
+      .switch { position:relative; width:52px; height:30px; flex:0 0 52px; }
+      .switch input { position:absolute; opacity:0; }
+      .switch i { position:absolute; inset:0; border-radius:99px; background:#56656a; transition:.2s; cursor:pointer; }
+      .switch i::after { content:""; position:absolute; width:24px; height:24px; left:3px; top:3px; border-radius:50%; background:#fff; transition:.2s; }
+      .switch input:checked+i { background:#c9ff3d; }
+      .switch input:checked+i::after { transform:translateX(22px); background:#102000; }
+      .max-correct { margin-top:7px; padding:5px 8px; border:1px solid #688087; border-radius:8px; color:var(--muted); background:transparent; font:700 .72rem/1 inherit; cursor:pointer; }
+      .max-correct:hover,.max-correct:focus-visible { color:var(--lime); border-color:var(--lime); outline:none; }
+      .history-list{display:grid;gap:8px}.history-row{display:flex;justify-content:space-between;gap:16px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#111d21}.history-row>div:last-child{text-align:right}.history-row strong,.history-row b,.history-row small{display:block}.history-row small{margin-top:3px;color:var(--muted);font-size:.78rem}.share-btn{width:100%;margin-top:10px}
+      @media (max-width:540px) {
+        .global-tools {
+          justify-content: space-between;
+        }
+        .road-module-nav { grid-template-columns:repeat(4,36px); gap:8px; }
+        .road-module-icon { width:36px; height:36px; }
+        .road-module-slot { width:36px; height:36px; }
+        .road-module-icon svg { width:19px; height:19px; }
+        .global-actions { gap:6px; }
+        .global-actions .language-circle,.global-actions .help-circle { width:38px; height:38px; flex-basis:38px; }
+        .home-button { width:44px; padding:0; justify-content:center; border-radius:50%; font-size:0; }
+        .home-button svg { width:22px; height:22px; }
+        .help-dialog { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); border-radius:16px; }
+        .help-dialog-inner { max-height:calc(100dvh - 16px); }
+      }
+      @media (max-height:520px) and (orientation:landscape) {
+        .help-dialog { max-height:calc(100dvh - 12px); }
+        .help-dialog-inner { max-height:calc(100dvh - 12px); }
+        .help-dialog-head { padding:10px 14px; }
+        .help-dialog-body { padding:12px 16px 16px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="global-tools">
+      <nav class="road-module-nav" aria-label="Seitennavigation">
+        <a class="road-module-icon dashboard" href="/" title="Dashboard · Startseite" aria-label="Dashboard · Startseite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></a>
+        <a class="road-module-icon statistics" href="/athletes" title="Statistik" aria-label="Statistik"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg></a>
+        <span class="road-module-slot" aria-hidden="true"></span>
+        <a class="road-module-icon challenge" href="/your-choice/index.html" title="Push-up Challenge" aria-label="Push-up Challenge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 12h8M5 9v6M19 9v6M3 12H1M23 12h-2"/></svg></a>
+      </nav>
+      <div class="global-actions"><button class="help-circle" id="openHelp" type="button" aria-label="Hilfe öffnen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button><label class="language-circle" id="appLanguageLabel" aria-label="Sprache"
+        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg><select id="appLanguage">
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+          <option value="fr">Français</option>
+          <option value="es">Español</option>
+          <option value="it">Italiano</option>
+          <option value="pt">Português</option>
+          <option value="bg">Български</option>
+          <option value="tr">Türkçe</option>
+          <option value="hu">Magyar</option>
+          <option value="ar">العربية</option>
+        </select></label></div>
+    </div>
+    <dialog class="help-dialog" id="helpDialog" aria-labelledby="helpTitle"><div class="help-dialog-inner"><header class="help-dialog-head"><h2 id="helpTitle">Road to 100 – Hilfe</h2><button class="help-close" id="closeHelp" type="button" aria-label="Hilfe schließen">×</button></header><div class="help-dialog-body"><h3>Icons und Funktionen</h3><ul><li><strong>Dashboard-Symbol:</strong> Zur Startseite und zur Erfassung deiner Push-ups.</li><li><strong>Balkendiagramm:</strong> Statistik und Rangliste öffnen.</li><li><strong>Hantel:</strong> Deine Push-up-Challenge öffnen.</li><li><strong>Fragezeichen:</strong> Diese Hilfe öffnen.</li><li><strong>Globus:</strong> Sprache auswählen.</li></ul><h3>Training</h3><ol><li>Führe den MAX-Test technisch sauber aus und trage das Ergebnis ein.</li><li>Wähle Erholung, Anstrengung und Schmerzen ehrlich aus.</li><li>Tippe auf den nächsten Satz und trage deine tatsächlich geschafften Wiederholungen ein.</li><li>Halte die angezeigte Pause ein. Danach folgt der nächste Satz.</li><li>Nach dem letzten Satz wird dein Training automatisch in THE.HUMAN.CHOICE gespeichert.</li></ol></div></div></dialog>
+    <div class="auth-shell">
+      <section class="auth-card" id="authCard">
+        <div class="logo">ROAD TO <b>100</b></div>
+        <h1 id="authTitle">Zentrale Anmeldung</h1>
+        <p>Melde dich einmal über THE.HUMAN.CHOICE an. Danach ist Road to 100 automatisch freigeschaltet.</p>
+        <a class="btn" href="/login" target="_top">Bei THE.HUMAN.CHOICE anmelden</a>
+        <form class="auth-form" id="authForm" hidden>
+          <label
+            ><span>E-Mail</span
+            ><input
+              id="authEmail"
+              type="email"
+              required
+              autocomplete="email" /></label
+          ><label
+            ><span>Passwort</span
+            ><input
+              id="authPassword"
+              type="password"
+              minlength="8"
+              required
+              autocomplete="current-password" /></label
+          ><label id="healthRow" hidden
+            ><span
+              ><input id="healthAccepted" type="checkbox" /> Ich habe den
+              Gesundheitshinweis gelesen und trainiere nur schmerzfrei.</span
+            ></label
+          ><button class="btn" id="authSubmit" type="submit">Anmelden</button
+          ><button class="auth-switch" id="authSwitch" type="button">
+            Neues Konto erstellen
+          </button>
+          <p class="auth-message" id="authMessage"></p>
+        </form>
+      </section>
+    </div>
+    <main class="app locked" id="app">
+      <section class="card profile-setup" id="profileSetup">
+        <div class="label">Athletenprofil vervollständigen</div>
+        <p class="sub">
+          Diese Angaben werden auch für THE.HUMAN.CHOICE verwendet.
+        </p>
+        <div class="profile-grid">
+          <input id="profileName" placeholder="Vorname" /><input
+            id="profileLastName"
+            placeholder="Nachname"
+          /><input id="profileCountry" placeholder="Land" /><select
+            id="profileGender"
+          >
+            <option value="male">Männlich</option>
+            <option value="female">Weiblich</option>
+          </select>
+        </div>
+        <button class="btn" id="saveProfile" type="button">
+          Profil übernehmen
+        </button>
+      </section>
+      <header class="top">
+        <div class="logo">ROAD TO <b>100</b></div>
+        <div class="top-actions">
+          <div class="day" id="day">Tag 1 von 60</div>
+        </div>
+      </header>
+      <section class="hero">
+        <h1>100 Push-ups<br />am Stück.</h1>
+        <p>Technik. Geduld. Zehn ehrliche Sätze pro Tag.</p>
+      </section>
+      <section class="grid">
+        <div class="card">
+          <div class="label">Aktuelles Maximum</div>
+          <div class="num" id="maxView">–</div>
+          <button class="max-correct" id="editMax" type="button">MAX korrigieren</button>
+        </div>
+        <div class="card">
+          <div class="label">Dein Satz</div>
+          <div class="num"><span id="setView">–</span></div>
+        </div>
+        <div class="card wide">
+          <div class="label">Heute abgeschlossen</div>
+          <div class="num"><span id="doneView">0</span>/10</div>
+          <div class="bar"><i id="progress"></i></div>
+        </div>
+      </section>
+      <h2 class="section-title">Dein adaptiver Coach</h2>
+      <section class="card coach-card">
+        <div class="coach-head">
+          <h3 class="coach-title"><span class="coach-icon">⌁</span><span>Tägliche Lernkurve</span></h3>
+          <span class="profile-pill" id="trainingProfile">STANDARD</span>
+        </div>
+        <div class="coach-grid">
+          <div class="coach-stat"><span>Training</span><strong id="workoutType">Volumen</strong></div>
+          <div class="coach-stat"><span>Sätze</span><strong id="setCountView">10</strong></div>
+          <div class="coach-stat"><span>Pause</span><strong id="pauseView">75 s</strong></div>
+          <div class="coach-stat"><span>Trend</span><strong id="trendView">Start</strong></div>
+        </div>
+        <p class="coach-reason" id="coachReason">Nach den ersten eingegebenen Sätzen beginnt die persönliche Auswertung.</p>
+        <div class="readiness">
+          <label>Schlaf / Erholung<select id="sleepInput"><option value="5">Sehr gut</option><option value="4" selected>Gut</option><option value="3">Mittel</option><option value="2">Schwach</option><option value="1">Sehr schwach</option></select></label>
+          <label>Anstrengung<select id="effortInput"><option value="2">Leicht</option><option value="3" selected>Mittel</option><option value="4">Schwer</option><option value="5">Maximum</option></select></label>
+          <label>Schmerzen<select id="painInput"><option value="0" selected>Keine</option><option value="1">1 - sehr leicht</option><option value="2">2 - leicht</option><option value="3">3 - deutlich</option><option value="4">4 oder mehr</option></select></label>
+        </div>
+        <div class="curve">
+          <div class="curve-top"><strong>Ausdauerentwicklung</strong><span id="curveCaption">Noch keine abgeschlossenen Tage</span></div>
+          <div id="curveChart" class="curve-empty">Die Kurve entsteht aus deinen täglichen Trainingswerten.</div>
+        </div>
+        <div class="pause-banner" id="pauseBanner">Nächster Satz in <span id="pauseCountdown">0</span> Sekunden</div>
+      </section>
+      <div id="maxSetupBlock">
+      <h2 class="section-title">1. Starte mit deinem MAX-Test</h2>
+      <section class="card">
+        <div class="setup">
+          <input
+            id="maxInput"
+            type="number"
+            min="1"
+            max="100"
+            inputmode="numeric"
+            placeholder="Saubere Push-ups am Stück"
+          /><button class="btn" id="saveMax">Plan starten</button>
+        </div>
+        <div class="sub training-explanation">
+          Trage zuerst ein, wie viele technisch saubere Push-ups du maximal am Stück schaffst. Der Coach berechnet daraus zehn erreichbare Sätze. Nach jedem Satz trägst du die tatsächlich geschaffte Zahl ein. Aus Leistung, Pausen, Erholung und Schmerzen wird der nächste Trainingstag automatisch angepasst.
+        </div>
+      </section>
+      </div>
+      <h2 class="section-title" id="setsTitle">2. Deine Sätze heute</h2>
+      <section class="sets" id="sets"></section>
+      <div class="sub">
+        Tippe auf einen Satz und trage die tatsächlich geschafften
+        Wiederholungen ein. Unter 82 % der Vorgabe gilt als nicht erreicht, ab
+        82 % als erreicht.
+      </div>
+      <section class="card reminder-card"><div class="reminder-copy"><strong>Trainingserinnerung</strong><span id="reminderStatus">Aus – keine Erinnerung</span></div><label class="switch" aria-label="Trainingserinnerung ein- oder ausschalten"><input id="reminderToggle" type="checkbox"><i></i></label></section>
+      <h2 class="section-title">Trainingstagebuch</h2>
+      <section class="history-list" id="trainingHistory"></section>
+      <button class="btn share-btn" id="shareProgress" type="button">Trainingsstand teilen</button>
+      <h2 class="section-title">Belohnung des Tages</h2>
+      <section class="card reward locked" id="reward">
+        <div class="label" id="rewardLabel">🔒 Noch verborgen</div>
+        <div class="reward-text" id="rewardText">
+          Dein Motivationsspruch erscheint erst, wenn alle 10 Sätze beendet
+          sind.
+        </div>
+      </section>
+      <h2 class="section-title">Korrekte Technik</h2>
+      <section class="card tech">
+        <video
+          src="technik.mp4"
+          controls
+          playsinline
+          preload="metadata"
+        ></video>
+        <div class="rules">
+          <div class="rule">
+            <div class="badge">1</div>
+            <p>Körper von Kopf bis Ferse in einer geraden Linie halten.</p>
+          </div>
+          <div class="rule">
+            <div class="badge">2</div>
+            <p>
+              Absenken, bis der Ellbogen mit dem Unterarm ca. 90 Grad bildet.
+              Hände schulterbreit aufsetzen, Handflächen leicht nach innen
+              drehen.
+            </p>
+          </div>
+          <div class="rule">
+            <div class="badge">3</div>
+            <p>Vollständig hochdrücken und jede Wiederholung ehrlich zählen.</p>
+          </div>
+        </div>
+      </section>
+      <h2 class="section-title">Romans Prinzip</h2>
+      <section class="card">
+        <div style="font-size: 1.1rem; font-weight: 800; line-height: 1.48">
+          „Du brauchst kein Equipment und keine Trainingskleider. Nur den
+          Willen, Geduld – und die Ehrlichkeit, jeden Satz aufzuschreiben.“
+        </div>
+        <div class="sub">
+          Fünffacher Guinness-Weltrekordhalter · Roman Dossenbach
+        </div>
+      </section>
+      <button class="danger" id="reset">Plan zurücksetzen</button>
+    </main>
+    <div class="celebrate" id="celebrate">
+      <div class="modal">
+        <div class="medal">🏆</div>
+        <div class="eyebrow">Training abgeschlossen</div>
+        <h2>Stark gemacht!</h2>
+        <p id="modalQuote"></p>
+        <button class="btn" id="closeModal">Tag abschließen</button>
+      </div>
+    </div>
+    <script src="/shared-menu.js?v=202"></script>
+    <script src="/voice-number-input.js"></script>
+    <script src="road-i18n.js"></script>
+    <script src="auth.js"></script>
+    <script type="text/plain" id="legacyRoadScript">
+      const KEY = "road-to-100-v1";
+      let state = JSON.parse(localStorage.getItem(KEY) || "null") || {
+        day: 1,
+        max: 0,
+        done: [],
+        date: new Date().toDateString(),
+        celebrated: false,
+      };
+      if (state.date !== new Date().toDateString()) {
+        state.day = Math.min(60, state.day + 1);
+        state.done = [];
+        state.date = new Date().toDateString();
+        state.celebrated = false;
+      }
+      const quotes = [
+        "Jeder beendete Satz ist ein Versprechen, das du dir selbst gehalten hast.",
+        "Stärke entsteht an Tagen wie heute.",
+        "Du musst nicht perfekt sein. Du musst nur wieder antreten.",
+        "Was heute schwer war, wird durch deine Disziplin leichter.",
+        "Motivation startet. Disziplin bringt dich ans Ziel.",
+        "Ein starker Tag entsteht aus zehn ehrlichen Sätzen.",
+        "Du trainierst nicht nur Muskeln, sondern Verlässlichkeit.",
+        "Dein Ziel ist näher, weil du heute gehandelt hast.",
+        "Fortschritt ist leise – aber heute ist er sichtbar.",
+        "Der Stolz danach ist stärker als jede Ausrede davor.",
+        "Müdigkeit entscheidet nicht. Du entscheidest.",
+        "Ein Tag erledigt. Ein stärkeres Ich aufgebaut.",
+        "Nicht jeder Satz war leicht. Genau deshalb zählt er.",
+        "Du hast heute getan, wovon andere nur sprechen.",
+        "Heute war kein Zufall. Heute war deine Entscheidung.",
+        "Du hast den Widerstand im Körper und im Kopf überwunden.",
+        "Deine Gewohnheit wird größer als deine Tagesform.",
+        "Heute hast du bewiesen: Du kannst dir vertrauen.",
+        "Dein Tempo darf wechseln. Deine Richtung bleibt klar.",
+        "Die Wiederholungen enden – ihre Wirkung bleibt.",
+        "Heute hast du deiner Zukunft Kraft geschenkt.",
+        "Disziplin heißt: anfangen, weitermachen, abschließen.",
+        "Der Körper folgt dem Kopf. Heute waren beide stark.",
+        "Deine tägliche Arbeit spricht lauter als Versprechen.",
+        "Stärke zeigt sich nicht im ersten, sondern im letzten Satz.",
+        "Kein Satz war umsonst. Jede Wiederholung führt weiter.",
+        "Du hast beendet, was du begonnen hast.",
+        "Wer täglich dranbleibt, verändert mehr als seinen Körper.",
+        "Deine einzige Konkurrenz ist die Version, die aufgeben wollte.",
+        "Grenzen verschieben sich, wenn du ihnen täglich begegnest.",
+        "Du hast dir heute Respekt verdient – deinen eigenen.",
+        "Die 100 sind kein Wunsch mehr. Sie sind dein Plan.",
+        "Aus kleinen Sätzen wächst große Ausdauer.",
+        "Du bist weiter als gestern, weil du heute nicht stehen bliebest.",
+        "Heute hast du Willenskraft in Fortschritt verwandelt.",
+        "Geduld ist kein Warten. Geduld ist tägliches Training.",
+        "Der schwierigste Satz war der nächste – und du hast ihn beendet.",
+        "Du baust heute die Kraft für morgen.",
+        "Ehrlich gezählt ist doppelt gewonnen.",
+        "Du brauchst keinen perfekten Tag, nur einen beendeten.",
+        "Dein Ziel wächst nicht. Du wächst ihm entgegen.",
+        "Heute hast du Ausreden durch Wiederholungen ersetzt.",
+        "Konsequenz macht aus Hoffnung ein Ergebnis.",
+        "Jeder Satz sagt: Ich gebe mir selbst nicht auf.",
+        "Du hast heute wieder Vertrauen in dich trainiert.",
+        "Das Ziel 100 beginnt immer mit der nächsten sauberen Wiederholung.",
+        "Heute warst du stärker als dein Zögern.",
+        "Die Arbeit ist getan. Der Fortschritt bleibt.",
+        "Du bist nicht zu spät. Du bist heute angetreten.",
+        "Kleine Schritte, täglich gemacht, werden zu großen Leistungen.",
+        "Deine Beharrlichkeit ist stärker als ein schwacher Moment.",
+        "Heute hast du nicht verhandelt – du hast trainiert.",
+        "Zehn Sätze. Zehn Entscheidungen für dein Ziel.",
+        "Der Weg wird leichter, weil du stärker wirst.",
+        "Jede saubere Wiederholung verdient deinen Stolz.",
+        "Du hast die Kontrolle behalten und den Tag gewonnen.",
+        "Heute hast du deinem Ziel Substanz gegeben.",
+        "Noch ein Tag, an dem dein Wort gezählt hat.",
+        "Du hast aus Geduld Kraft gemacht.",
+        "Du bist bereit: 100 beginnen mit dem Glauben an die nächste Wiederholung.",
+      ];
+      const $ = (s) => document.querySelector(s),
+        save = () => {
+          localStorage.setItem(KEY, JSON.stringify(state));
+          render();
+          window.persistRoadPlan?.(state);
+          window.syncCompletedDay?.();
+        },
+        setReps = () => Math.max(1, Math.round(state.max * 0.6));
+      state.actuals = state.actuals || {};
+      window.getRoadPlan = () => state;
+      window.applyRoadPlan = (plan) => {
+        if (!plan || typeof plan !== "object") return;
+        state = { ...state, ...plan, done: Array.isArray(plan.done) ? plan.done : [], actuals: plan.actuals || {} };
+        const today = new Date().toDateString();
+        if (state.date !== today) {
+          state.day = Math.min(60, Number(state.day || 1) + 1);
+          state.done = [];
+          state.actuals = {};
+          state.date = today;
+          state.actualDay = today;
+          state.celebrated = false;
+          window.persistRoadPlan?.(state);
+        }
+        localStorage.setItem(KEY, JSON.stringify(state));
+        render();
+      };
+      function render() {
+        let reps = setReps(),
+          complete = state.done.length === 10;
+        $("#day").textContent = RoadI18n.t("day", { day: state.day });
+        $("#maxView").textContent = state.max || "–";
+        $("#maxSetupBlock").hidden = Boolean(state.max);
+        $("#setView").textContent = state.max ? reps : "–";
+        $("#doneView").textContent = state.done.length;
+        $("#progress").style.width = state.done.length * 10 + "%";
+        $("#sets").innerHTML = Array.from({ length: 10 }, (_, i) => {
+          let actual = state.actuals[i],
+            reached = state.done.includes(i),
+            entered = actual !== undefined;
+          return `<button class="set ${reached ? "done" : ""}" data-i="${i}" ${state.max ? "" : "disabled"}><span><small>${RoadI18n.t("set", { set: i + 1 })}</small><br><strong>${entered ? actual : state.max ? reps : "–"}</strong><small>${entered ? " / " + reps : ""}</small></span><span class="check">${entered ? (reached ? "✓" : "✕") : ""}</span></button>`;
+        }).join("");
+        $("#reward").className = "card reward " + (complete ? "" : "locked");
+        $("#rewardLabel").textContent = complete
+          ? RoadI18n.t("doneDay", { day: state.day })
+          : RoadI18n.t("hidden");
+        $("#rewardText").textContent = complete
+          ? (window.getRoadQuote?.(state.day - 1) ?? quotes[state.day - 1])
+          : RoadI18n.t("rewardHidden");
+        document
+          .querySelectorAll(".set")
+          .forEach((b) => (b.onclick = () => enterActual(Number(b.dataset.i))));
+      }
+      function enterActual(i) {
+        let target = setReps(),
+          old = state.actuals[i] ?? target,
+          value = prompt(
+            RoadI18n.t("enterSet", {
+              set: i + 1,
+              target,
+              minimum: Math.ceil(target * 0.82),
+            }),
+            old,
+          );
+        if (value === null) return;
+        let actual = Number(value);
+        if (!Number.isFinite(actual) || actual < 0)
+          return alert(RoadI18n.t("invalidNumber"));
+        state.actuals[i] = Math.round(actual);
+        let reached = actual >= target * 0.82;
+        state.done = state.done.filter((x) => x !== i);
+        if (reached) state.done = [...state.done, i].sort((a, b) => a - b);
+        save();
+        if (reached && state.done.length === 10 && !state.celebrated) {
+          state.celebrated = true;
+          save();
+          $("#modalQuote").textContent =
+            window.getRoadQuote?.(state.day - 1) ?? quotes[state.day - 1];
+          $("#celebrate").classList.add("show");
+        } else if (!reached)
+          alert(
+            RoadI18n.t("notReached", { minimum: Math.ceil(target * 0.82) }),
+          );
+      }
+      $("#saveMax").onclick = () => {
+        let n = Number($("#maxInput").value);
+        if (n < 1 || n > 100) return alert(RoadI18n.t("invalidMax"));
+        if (state.max && n !== state.max && !confirm("Aktuelles Maximum " + state.max + " durch " + n + " ersetzen und alle Empfehlungen neu berechnen?")) return;
+        state.max = n;
+        state.done = [];
+        state.actuals = {};
+        state.celebrated = false;
+        save();
+        $("#maxInput").value = "";
+      };
+      $("#editMax").onclick = () => {
+        $("#maxSetupBlock").hidden = false;
+        $("#maxInput").value = state.max || "";
+        $("#saveMax").textContent = "Maximum ersetzen";
+        $("#maxInput").focus();
+      };
+      $("#closeModal").onclick = () => $("#celebrate").classList.remove("show");
+      $("#reset").onclick = async () => {
+        if (confirm(RoadI18n.t("confirmReset"))) {
+          await window.centralFetch?.("/api/road-plan", { method: "DELETE" });
+          localStorage.removeItem(KEY);
+          location.reload();
+        }
+      };
+      render();
+    </script>
+    <script src="adaptive-coach.js"></script>
+    <script type="text/plain" id="legacyActualDayScript">
+      if (!state.actualDay) {
+        state.actualDay = state.date;
+        localStorage.setItem(KEY, JSON.stringify(state));
+      } else if (state.actualDay !== state.date) {
+        state.actuals = {};
+        state.actualDay = state.date;
+        localStorage.setItem(KEY, JSON.stringify(state));
+        render();
+      }
+    </script>
+    <script>
+      (() => {
+        const dialog=document.querySelector("#helpDialog"), open=document.querySelector("#openHelp"), close=document.querySelector("#closeHelp");
+        open.addEventListener("click",()=>dialog.showModal());
+        close.addEventListener("click",()=>dialog.close());
+        dialog.addEventListener("click",event=>{if(event.target===dialog)dialog.close()});
+        const toggle=document.querySelector("#reminderToggle"), status=document.querySelector("#reminderStatus"), key="road-to-100-reminder";
+        let timer;
+        function incomplete(){const plan=window.state;const required=Number(plan?.adaptive?.todayPlan?.sets||10);return Boolean(plan?.max)&&Object.keys(plan?.actuals||{}).length<required}
+        function paint(){const on=localStorage.getItem(key)==="on";toggle.checked=on;status.textContent=on?"Ein – erinnert dich, solange das heutige Training offen ist":"Aus – keine Erinnerung";clearInterval(timer);if(on)timer=setInterval(()=>{if(incomplete()&&document.hidden&&Notification.permission==="granted")new Notification("Road to 100",{body:"Dein heutiges Training ist noch nicht abgeschlossen."})},60*60*1000)}
+        toggle.addEventListener("change",async()=>{if(toggle.checked&&"Notification" in window&&Notification.permission==="default")await Notification.requestPermission();localStorage.setItem(key,toggle.checked?"on":"off");paint()});
+        paint();
+      })();
+    </script>
+  </body>
+</html>

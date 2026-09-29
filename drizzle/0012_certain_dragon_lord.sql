@@ -1,0 +1,1 @@
+ALTER TABLE `entries` ADD `source` text DEFAULT 'human-choice' NOT NULL;

@@ -1,0 +1,159 @@
+/* Smartphone-safe sizing for the shared THE.HUMAN.CHOICE drawer. */
+.thc-menu-drawer {
+  width: min(390px, calc(100vw - 10px));
+  height: 100dvh;
+  max-height: 100dvh;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  overflow: hidden;
+}
+
+.thc-menu-head {
+  min-width: 0;
+  grid-template-columns: 44px minmax(0, 1fr) 40px;
+}
+
+.thc-menu-user,
+.thc-menu-item,
+.thc-menu-item span {
+  min-width: 0;
+}
+
+.thc-menu-user strong,
+.thc-menu-user small,
+.thc-menu-item span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.thc-menu-user strong {
+  line-height: 1.25;
+}
+
+.thc-menu-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.thc-menu-item {
+  height: auto;
+  padding-top: 11px;
+  padding-bottom: 11px;
+  align-items: center;
+  line-height: 1.3;
+}
+
+.thc-menu-submenu > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.thc-menu-submenu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.thc-menu-submenu > summary b {
+  margin-left: auto;
+  color: #c9ff3d;
+  transition: transform .2s ease;
+}
+
+.thc-menu-submenu[open] > summary b {
+  transform: rotate(180deg);
+}
+
+.thc-menu-submenu > div {
+  margin: 0 8px 7px 44px;
+  padding-left: 12px;
+  border-left: 2px solid #40575d;
+}
+
+.thc-menu-subitem {
+  min-height: 42px;
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  border-radius: 9px;
+  color: #dce6e8;
+  text-decoration: none;
+  font-size: .92rem;
+  font-weight: 720;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.thc-menu-subitem:hover,
+.thc-menu-subitem:focus-visible {
+  background: #21383e;
+  outline: none;
+}
+
+.thc-menu-subitem.active {
+  color: #102000;
+  background: #c9ff3d;
+}
+
+body.thc-menu-open {
+  overflow: hidden;
+  touch-action: none;
+}
+
+body.thc-menu-ready .subpageTopbar {
+  padding-left: 68px;
+}
+
+@media (max-width: 380px) {
+  .thc-menu-drawer {
+    width: calc(100vw - 6px);
+  }
+
+  .thc-menu-head {
+    padding: 14px 12px 12px;
+    gap: 9px;
+  }
+
+  .thc-menu-mark {
+    width: 42px;
+    height: 42px;
+  }
+
+  .thc-menu-item {
+    min-height: 46px;
+    padding-left: 10px;
+    padding-right: 10px;
+    gap: 11px;
+    font-size: .95rem;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .thc-menu-head {
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+
+  .thc-menu-mark {
+    width: 38px;
+    height: 38px;
+  }
+
+  .thc-menu-scroll {
+    padding-top: 5px;
+  }
+
+  .thc-menu-group {
+    margin-top: 6px;
+  }
+
+  .thc-menu-item {
+    min-height: 42px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
