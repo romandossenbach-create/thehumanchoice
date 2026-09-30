@@ -32,11 +32,12 @@ export async function GET(request: Request) {
   try {
     const athleteId = new URL(request.url).searchParams.get("athleteId");
     if (!validId(athleteId)) return new Response("Ungültiges Profil.", { status: 400 });
-    const row = await env.DB.prepare("SELECT profile_photo_key AS profilePhotoKey, profile_photo_type AS profilePhotoType FROM athletes WHERE id = ?").bind(athleteId).first<{ profilePhotoKey: string | null; profilePhotoType: string | null }>();
+    const user = await getSupabaseUser(request);
+    const row = await env.DB.prepare("SELECT profile_photo_key AS profilePhotoKey, profile_photo_type AS profilePhotoType FROM athletes WHERE id = ? AND (private_mode = 0 OR owner_user_id = ?)").bind(athleteId, user?.id || "").first<{ profilePhotoKey: string | null; profilePhotoType: string | null }>();
     if (!row?.profilePhotoKey) return new Response("Kein Profilfoto vorhanden.", { status: 404 });
     const object = await env.BUCKET.get(row.profilePhotoKey);
     if (!object) return new Response("Profilfoto nicht gefunden.", { status: 404 });
-    return new Response(object.body, { headers: { "content-type": row.profilePhotoType || object.httpMetadata?.contentType || "image/jpeg", "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff" } });
+    return new Response(object.body, { headers: { "content-type": row.profilePhotoType || object.httpMetadata?.contentType || "image/jpeg", "cache-control": "private, no-store", "vary": "Authorization", "x-content-type-options": "nosniff" } });
   } catch (error) {
     console.error("profile photo GET failed", error);
     return new Response("Profilfoto nicht verfügbar.", { status: 500 });

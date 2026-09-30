@@ -16,9 +16,10 @@ export async function GET(request: Request) {
     if (!validId(athleteId)) return Response.json({ error: "Ungültiges Profil." }, { status: 400 });
     const offset = Number(requestUrl.searchParams.get("offset") ?? "0");
     if (!Number.isSafeInteger(offset) || offset < 0) return Response.json({ error: "Ungültige Seitenposition." }, { status: 400 });
-    const access = await env.DB.prepare("SELECT owner_user_id AS ownerUserId, training_log_public AS permanentlyPublic, (datetime(training_log_public_until) > CURRENT_TIMESTAMP) AS temporarilyPublic, training_log_public_scope AS publicScope FROM athletes WHERE id = ?").bind(athleteId).first<{ownerUserId:string;permanentlyPublic:number;temporarilyPublic:number;publicScope:string}>();
+    const access = await env.DB.prepare("SELECT private_mode AS privateMode, owner_user_id AS ownerUserId, training_log_public AS permanentlyPublic, (datetime(training_log_public_until) > CURRENT_TIMESTAMP) AS temporarilyPublic, training_log_public_scope AS publicScope FROM athletes WHERE id = ?").bind(athleteId).first<{privateMode:number;ownerUserId:string;permanentlyPublic:number;temporarilyPublic:number;publicScope:string}>();
     if (!access) return Response.json({ error:"Athlet nicht gefunden." }, { status:404 });
     const isOwner = Boolean(user && access.ownerUserId === user.id);
+    if (!isOwner && access.privateMode) return Response.json({ error:"Athlet nicht gefunden." }, { status:404, headers:{"cache-control":"private, no-store"} });
     if (!isOwner && !Boolean(access.permanentlyPublic) && !Boolean(access.temporarilyPublic)) return Response.json({ error:"Dieses Trainingsbuch ist nicht freigegeben." }, { status:403, headers:{"cache-control":"private, no-store"} });
     const today = new Intl.DateTimeFormat("sv-SE", { timeZone:"Europe/Zurich", year:"numeric", month:"2-digit", day:"2-digit" }).format(new Date());
     const visibleAsCommunity = !isOwner;

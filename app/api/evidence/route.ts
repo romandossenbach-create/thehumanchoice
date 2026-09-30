@@ -33,14 +33,16 @@ export async function GET(request: Request) {
   try {
     const entryId = Number(new URL(request.url).searchParams.get("entryId"));
     if (!Number.isInteger(entryId)) return new Response("Ungültiger Eintrag.", { status: 400 });
-    const row = await env.DB.prepare("SELECT evidence_key AS evidenceKey, evidence_type AS evidenceType FROM entries WHERE id = ?").bind(entryId).first<{ evidenceKey: string | null; evidenceType: string | null }>();
+    const user = await getSupabaseUser(request);
+    const row = await env.DB.prepare("SELECT e.evidence_key AS evidenceKey, e.evidence_type AS evidenceType FROM entries e JOIN athletes a ON a.id = e.athlete_id WHERE e.id = ? AND (a.private_mode = 0 OR a.owner_user_id = ?)").bind(entryId, user?.id || "").first<{ evidenceKey: string | null; evidenceType: string | null }>();
     if (!row?.evidenceKey) return new Response("Kein Video vorhanden.", { status: 404 });
     const object = await env.BUCKET.get(row.evidenceKey);
     if (!object) return new Response("Video nicht gefunden.", { status: 404 });
     return new Response(object.body, {
       headers: {
         "content-type": row.evidenceType || object.httpMetadata?.contentType || "video/mp4",
-        "cache-control": "public, max-age=3600",
+        "cache-control": "private, no-store",
+        "vary": "Authorization",
         "content-disposition": "inline",
       },
     });

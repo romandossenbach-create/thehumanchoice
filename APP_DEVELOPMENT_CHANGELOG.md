@@ -1,3 +1,11 @@
+## PRIVATE MODE · 30.09.2026 · Quellbasis V270 / 16e8448
+
+- Dauerhaft gespeicherter Account-Schalter unter Profil → Privacy → Community Visibility.
+- Serverseitiger Schutz von Ranglisten, Summen, Trainingsbuch, Video-Nachweisen, Profilfotos, Globusarchiv und persönlicher Weltrekordhistorie. Persönliche Daten werden ausschließlich dem authentifizierten Eigentümer separat geliefert.
+- Migration 0016 ergänzt athletes.private_mode und setzt Roman anhand bestehender Athleten-ID, Nummer und Eigentümer-ID auf ON. Keine Änderungen an Trainingseinträgen oder Challenges.
+- Creator-Credits bleiben unabhängig sichtbar. Bestehende Handbücher vor Änderung unter docs/backups/2026-09-30-private-mode gesichert.
+- Lokale Regressionstests verwenden SQLite und simulierte Identitäten; sie ersetzen keinen echten Zweitaccount-Test.
+
 ## Version 247 · 28.09.2026, 12:53 Uhr Zürich
 
 - Globus: Landmassen, Ozeane, Licht und Hintergrund sichtbar aufgehellt.

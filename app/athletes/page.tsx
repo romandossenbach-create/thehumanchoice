@@ -1,12 +1,14 @@
 "use client";
 
+import ProfileImage from "../profile-image";
+
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowUpDown, Settings, HelpCircle, LayoutDashboard, Search, Trophy } from "lucide-react";
 import { useLanguage } from "../i18n";
 import { authorizedFetch, initializeSession } from "../auth-client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-type Leader = { id:string; athleteNumber:number; name:string; lastNameInitials:string; country:string; gender:"male"|"female"; age:number|null; today:number; personalBest:number; verifiedPersonalBest:number; total:number; month:number; average:number; averagePeriodDays?:number|null; activeDays:number; hasProfilePhoto:boolean; trainingLogPublic:boolean; isFeatured?:boolean; challenge?:{ day:number; total:number; goal:number }|null };
+type Leader = { id:string; athleteNumber:number; name:string; lastNameInitials:string; country:string; gender:"male"|"female"; age:number|null; today:number; personalBest:number; verifiedPersonalBest:number; total:number; verifiedAchievementMinimum?:number; month:number; average:number; averagePeriodDays?:number|null; activeDays:number; hasProfilePhoto:boolean; trainingLogPublic:boolean; isFeatured?:boolean; challenge?:{ day:number; total:number; goal:number }|null };
 
 const achievementLevels = [
   { minimum:1_000, short:"1K", label:"1,000 · BRONZE" }, { minimum:10_000, short:"10K", label:"10,000 · SILVER" },
@@ -15,21 +17,17 @@ const achievementLevels = [
   { minimum:5_000_000, short:"5M+", label:"5 MILLION+ · NORTH STAR DIAMOND" },
 ] as const;
 
-const verifiedAchievementMinimums: Record<string, number> = {
-  "0431b2b7-b3d3-4666-b5ad-f0d53709b686": 2_000_000, // Roman Dossenbach: verified lifetime total 2.1M
-  "6486023e-5793-44d6-ae04-41c8292f37dc": 1_000_000, // Thomas Hasenpflug: verified 1M club
-};
 
-function AchievementBadge({ total, athleteId }:{ total:number; athleteId:string }) {
-  const achievementTotal = Math.max(total, verifiedAchievementMinimums[athleteId] || 0);
+function AchievementBadge({ total, verifiedMinimum=0 }:{ total:number; verifiedMinimum?:number }) {
+  const achievementTotal = Math.max(total, verifiedMinimum);
   const index = achievementLevels.reduce((best, level, current) => achievementTotal >= level.minimum ? current : best, -1);
   if (index < 0) return null;
   const label = achievementLevels[index].label;
   return <span className={`achievementBadge achievementLevel${index}`} data-award={achievementLevels[index].short} title={label} aria-label={label} />;
 }
 
-function achievementValue(leader: Pick<Leader,"id"|"total">) {
-  return Math.max(leader.total, verifiedAchievementMinimums[leader.id] || 0);
+function achievementValue(leader: Pick<Leader,"verifiedAchievementMinimum"|"total">) {
+  return Math.max(leader.total, leader.verifiedAchievementMinimum || 0);
 }
 
 function AchievementMenu() {
@@ -47,6 +45,7 @@ function AchievementMenu() {
 export default function AthletesPage() {
   const { t, locale } = useLanguage();
   const [leaders, setLeaders] = useState<Leader[]>([]);
+  const [ownPerformance, setOwnPerformance] = useState<Leader | null>(null);
   const [ownAthleteId, setOwnAthleteId] = useState("");
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -64,15 +63,15 @@ export default function AthletesPage() {
   const [genderFilter, setGenderFilter] = useState<"all"|"male"|"female">("all");
   useEffect(() => {
     let active = true;
-    const refresh = () => fetch("/api/leaderboard", { cache:"no-store" }).then((r) => r.json()).then((d) => { if (active) setLeaders(d.leaders || []); }).catch(() => {}).finally(() => { if (active) setLoading(false); });
-    void refresh();
+    const refresh = () => authorizedFetch("/api/leaderboard", { cache:"no-store" }).then(async (r) => await r.json() as {leaders?:Leader[];ownAthlete?:Leader|null}).then((d) => { if (active) { setLeaders(d.leaders || []); setOwnPerformance(d.ownAthlete || null); } }).catch(() => {}).finally(() => { if (active) setLoading(false); });
+    void initializeSession().then(refresh);
     const timer = window.setInterval(refresh, 60_000);
     return () => { active = false; window.clearInterval(timer); };
   }, []);
   useEffect(() => { let live=true; initializeSession().then(async(user)=>{if(!user)return;const response=await authorizedFetch("/api/profile",{cache:"no-store"});if(response.ok){const data=await response.json() as {profile?:{id:string}};if(live)setOwnAthleteId(data.profile?.id || "")}}).catch(()=>{});return()=>{live=false}},[]);
   const filtered = useMemo(() => leaders.filter((leader) => genderFilter === "all" || leader.gender === genderFilter), [leaders, genderFilter]);
   const featured = useMemo(() => filtered.find((leader) => leader.athleteNumber === 1), [filtered]);
-  const ownAthlete = useMemo(() => leaders.find((leader) => leader.id === ownAthleteId), [leaders, ownAthleteId]);
+  const ownAthlete = useMemo(() => ownPerformance?.id === ownAthleteId ? ownPerformance : leaders.find((leader) => leader.id === ownAthleteId), [leaders, ownAthleteId, ownPerformance]);
   const ranked = useMemo(() => filtered.filter((leader) => leader.athleteNumber !== 1).sort((a,b) => {
     const aValue = sort === "achievement" ? achievementValue(a) : sort === "age" ? (a.age ?? -1) : a[sort];
     const bValue = sort === "achievement" ? achievementValue(b) : sort === "age" ? (b.age ?? -1) : b[sort];
@@ -109,8 +108,8 @@ export default function AthletesPage() {
       const data=await response.json() as {error?:string;until?:string|null};
       if(!response.ok) throw new Error(data.error || "Freigabe konnte nicht gespeichert werden.");
       setSharingUntil(data.until || null); setSharingDuration(duration);
-      const board=await fetch("/api/leaderboard",{cache:"no-store"});
-      if(board.ok) setLeaders((await board.json()).leaders || []);
+      const board=await authorizedFetch("/api/leaderboard",{cache:"no-store"});
+      if(board.ok) setLeaders((await board.json() as {leaders?:Leader[]}).leaders || []);
       setSharingOpen(false);
     } catch(error) { setSharingError(error instanceof Error ? error.message : "Freigabe konnte nicht gespeichert werden."); }
     finally { setSharingSaving(false); }
@@ -118,7 +117,7 @@ export default function AthletesPage() {
   const rankLabel = sort === "age" ? "Alter" : sort === "achievement" ? "Achievement" : sort === "today" ? "Heute" : sort === "personalBest" ? "Personal Best" : sort === "average" ? t("rankAverage") : sort === "month" ? t("rankMonth") : t("rankTotal");
   return <main className="athletesPage">
     <header className="statisticsPageTopbar" aria-label="Seitennavigation">
-      {ownAthlete && <a className="statisticsOwnPhoto" href="/" title="Zur Startseite" aria-label="Zur Startseite">{ownAthlete.hasProfilePhoto ? <img src={`/api/profile-photo?athleteId=${encodeURIComponent(ownAthlete.id)}`} alt={t("profilePhotoOf", { name:ownAthlete.name })} /> : <img src="/profile-placeholder-globe.png" alt="" />}</a>}
+      {ownAthlete && <a className="statisticsOwnPhoto" href="/" title="Zur Startseite" aria-label="Zur Startseite">{ownAthlete.hasProfilePhoto ? <ProfileImage src={`/api/profile-photo?athleteId=${encodeURIComponent(ownAthlete.id)}`} alt={t("profilePhotoOf", { name:ownAthlete.name })} /> : <img src="/profile-placeholder-globe.png" alt="" />}</a>}
       <nav className="statisticsPageNav">
         <a className="statisticsModuleButton dashboardModuleButton" href="/" title="Dashboard · Startseite" aria-label="Dashboard · Startseite"><LayoutDashboard size={22}/></a>
         <span className="statisticsModuleSlot" aria-hidden="true" />
@@ -165,10 +164,10 @@ export default function AthletesPage() {
       <div className="athletesTableHead"><span title={t("rank")}>#</span><span aria-label={t("photo")} title={t("photo")}>PIC</span><span title={t("athlete")}>ATHLETE</span><button className="ageSort" type="button" title="Alter sortieren" aria-label="Alter sortieren" onClick={() => changeSort("age")} aria-pressed={sort === "age"}><span>AGE</span><ArrowUpDown size={11}/></button><button className="awardSort" type="button" title="Achievement sortieren" aria-label="Achievement sortieren" onClick={() => changeSort("achievement")} aria-pressed={sort === "achievement"}><span>AWD</span><ArrowUpDown size={11}/></button><button className="daySort" type="button" title="Heute" aria-label="Heute sortieren" onClick={() => changeSort("today")} aria-pressed={sort === "today"}><span>DAY</span><ArrowUpDown size={11}/></button><button type="button" title="Personal Best – Max Push-ups in One Set" aria-label="Personal Best sortieren" onClick={() => changeSort("personalBest")} aria-pressed={sort === "personalBest"}><span>PB</span><ArrowUpDown size={11}/></button><button className="averageSort" type="button" title={t("avgDay")} aria-label={t("avgDay")+" sortieren"} onClick={() => changeSort("average")} aria-pressed={sort === "average"}><span>AVG/D</span><ArrowUpDown size={11}/></button><button type="button" title={t("thisMonth")} aria-label={t("thisMonth")+" sortieren"} onClick={() => changeSort("month")} aria-pressed={sort === "month"}><span>MON</span><ArrowUpDown size={11}/></button><button type="button" title={t("total")} aria-label={t("total")+" sortieren"} onClick={() => changeSort("total")} aria-pressed={sort === "total"}><span>TOTAL</span><ArrowUpDown size={11}/></button></div>
       {featured && <div className="athletesTableRow featuredAthlete">
         <span aria-hidden="true" />
-        <span className={`athletePhoto ${(featured.trainingLogPublic || featured.id === ownAthleteId) ? "isTrainingLogLink" : ""}`}>{featured.hasProfilePhoto ? ((featured.trainingLogPublic || featured.id === ownAthleteId) ? <a href={`/athletes/${featured.id}#today`} title={`Heutiges Trainingsbuch von ${featured.name}`} aria-label={`Heutiges Trainingsbuch von ${featured.name} öffnen`}><img src={`/api/profile-photo?athleteId=${encodeURIComponent(featured.id)}`} alt={t("profilePhotoOf", { name:featured.name })} /></a> : <img src={`/api/profile-photo?athleteId=${encodeURIComponent(featured.id)}`} alt={t("profilePhotoOf", { name:featured.name })} />) : <img className="athletePhotoFallback" src="/profile-placeholder-globe.png" alt="THE.HUMAN.CHOICE Globus als Profilbildplatzhalter" />}</span>
+        <span className={`athletePhoto ${(featured.trainingLogPublic || featured.id === ownAthleteId) ? "isTrainingLogLink" : ""}`}>{featured.hasProfilePhoto ? ((featured.trainingLogPublic || featured.id === ownAthleteId) ? <a href={`/athletes/${featured.id}#today`} title={`Heutiges Trainingsbuch von ${featured.name}`} aria-label={`Heutiges Trainingsbuch von ${featured.name} öffnen`}><ProfileImage src={`/api/profile-photo?athleteId=${encodeURIComponent(featured.id)}`} alt={t("profilePhotoOf", { name:featured.name })} /></a> : <ProfileImage src={`/api/profile-photo?athleteId=${encodeURIComponent(featured.id)}`} alt={t("profilePhotoOf", { name:featured.name })} />) : <img className="athletePhotoFallback" src="/profile-placeholder-globe.png" alt="THE.HUMAN.CHOICE Globus als Profilbildplatzhalter" />}</span>
         <span className="athleteName"><span><strong className="athleteIdentity">{featured.trainingLogPublic ? <a href={`/athletes/${featured.id}`}>{featured.name}{featured.lastNameInitials ? ` ${featured.lastNameInitials}.` : ""}</a> : <>{featured.name}{featured.lastNameInitials ? ` ${featured.lastNameInitials}.` : ""}</>}</strong><small className="athleteIdLabel">ID {String(featured.athleteNumber).padStart(4, "0")}</small><small className="athleteMeta">TOP · CREATOR · {featured.averagePeriodDays} {t("activeDays")} · {featured.trainingLogPublic ? "TRAININGSBUCH FREIGEGEBEN" : "TRAININGSBUCH PRIVAT"}</small></span></span>
         <span className="birthYear">{featured.age ?? "–"}</span>
-        <span className="athleteAward"><AchievementBadge total={featured.total} athleteId={featured.id}/></span>
+        <span className="athleteAward"><AchievementBadge total={featured.total} verifiedMinimum={featured.verifiedAchievementMinimum}/></span>
         <strong data-label="Heute">{featured.today.toLocaleString(locale)}</strong>
         <span className="athletePb"><strong>{featured.personalBest || "–"}</strong></span>
         <strong data-label={t("avgDay")}>{featured.average.toLocaleString(locale)}</strong>
@@ -177,10 +176,10 @@ export default function AthletesPage() {
       </div>}
       {loading ? <p className="empty">{t("loading")}</p> : visibleLeaders.length ? visibleLeaders.map(({ leader, rank }) => <div className={`athletesTableRow ${rank <= 3 ? "podium" : ""}`} key={leader.id}>
         <strong className="place">{rank}</strong>
-        <span className={`athletePhoto ${(leader.trainingLogPublic || leader.id === ownAthleteId) ? "isTrainingLogLink" : ""}`}>{leader.hasProfilePhoto ? ((leader.trainingLogPublic || leader.id === ownAthleteId) ? <a href={`/athletes/${leader.id}#today`} title={`Heutiges Trainingsbuch von ${leader.name}`} aria-label={`Heutiges Trainingsbuch von ${leader.name} öffnen`}><img loading="lazy" src={`/api/profile-photo?athleteId=${encodeURIComponent(leader.id)}`} alt={t("profilePhotoOf", { name:leader.name })} /></a> : <img loading="lazy" src={`/api/profile-photo?athleteId=${encodeURIComponent(leader.id)}`} alt={t("profilePhotoOf", { name:leader.name })} />) : <img className="athletePhotoFallback" src="/profile-placeholder-globe.png" alt="THE.HUMAN.CHOICE Globus als Profilbildplatzhalter" />}</span>
+        <span className={`athletePhoto ${(leader.trainingLogPublic || leader.id === ownAthleteId) ? "isTrainingLogLink" : ""}`}>{leader.hasProfilePhoto ? ((leader.trainingLogPublic || leader.id === ownAthleteId) ? <a href={`/athletes/${leader.id}#today`} title={`Heutiges Trainingsbuch von ${leader.name}`} aria-label={`Heutiges Trainingsbuch von ${leader.name} öffnen`}><ProfileImage loading="lazy" src={`/api/profile-photo?athleteId=${encodeURIComponent(leader.id)}`} alt={t("profilePhotoOf", { name:leader.name })} /></a> : <ProfileImage loading="lazy" src={`/api/profile-photo?athleteId=${encodeURIComponent(leader.id)}`} alt={t("profilePhotoOf", { name:leader.name })} />) : <img className="athletePhotoFallback" src="/profile-placeholder-globe.png" alt="THE.HUMAN.CHOICE Globus als Profilbildplatzhalter" />}</span>
         <span className="athleteName"><span><strong className="athleteIdentity">{leader.trainingLogPublic ? <a href={`/athletes/${leader.id}`}>{leader.name}{leader.lastNameInitials ? ` ${leader.lastNameInitials}.` : ""}</a> : <>{leader.name}{leader.lastNameInitials ? ` ${leader.lastNameInitials}.` : ""}</>}</strong><small className="athleteIdLabel">ID {String(leader.athleteNumber).padStart(4, "0")}</small><small className="athleteMeta">{leader.country} · {leader.gender === "female" ? "F" : "M"} · {leader.trainingLogPublic ? "Trainingsbuch ansehen" : leader.id === ownAthleteId ? "Eigenes Trainingsbuch ansehen · privat" : "Privat"}</small></span></span>
         <span className="birthYear">{leader.age ?? "–"}</span>
-        <span className="athleteAward"><AchievementBadge total={leader.total} athleteId={leader.id}/></span>
+        <span className="athleteAward"><AchievementBadge total={leader.total} verifiedMinimum={leader.verifiedAchievementMinimum}/></span>
         <strong data-label="Heute">{leader.today.toLocaleString(locale)}</strong>
         <span className="athletePb"><strong>{leader.personalBest || "–"}</strong></span>
         <strong data-label={t("avgDay")}>{leader.average.toLocaleString(locale)}</strong>

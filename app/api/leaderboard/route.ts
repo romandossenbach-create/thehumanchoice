@@ -47,17 +47,18 @@ function cleanText(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, max) : "";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const user = await getSupabaseUser(request);
     const month = localMonthKey();
     const todayDate = localDayKey();
     const summary = await env.DB.prepare(
       `SELECT COALESCE(SUM(reps), 0) AS total,
        COALESCE(SUM(CASE WHEN substr(entry_date, 1, 7) = ? THEN reps ELSE 0 END), 0) AS month,
-       (SELECT COUNT(*) FROM athletes) AS athletes FROM entries`,
+       (SELECT COUNT(*) FROM athletes WHERE private_mode = 0) AS athletes FROM entries e JOIN athletes a ON a.id = e.athlete_id WHERE a.private_mode = 0`,
     ).bind(month).first<{ total: number; month: number; athletes: number }>();
     const result = await env.DB.prepare(
-      `SELECT a.id, a.athlete_number AS athleteNumber, a.name, a.last_name AS lastName, a.country, a.gender, a.birth_date AS birthDate, (a.training_log_public = 1 OR datetime(a.training_log_public_until) > CURRENT_TIMESTAMP) AS trainingLogPublic, SUM(e.reps) AS total,
+      `SELECT a.id, a.private_mode AS privateMode, a.owner_user_id AS ownerUserId, a.athlete_number AS athleteNumber, a.name, a.last_name AS lastName, a.country, a.gender, a.birth_date AS birthDate, (a.training_log_public = 1 OR datetime(a.training_log_public_until) > CURRENT_TIMESTAMP) AS trainingLogPublic, SUM(e.reps) AS total,
        SUM(CASE WHEN substr(e.entry_date, 1, 7) = ? THEN e.reps ELSE 0 END) AS month,
       SUM(CASE WHEN e.entry_date = ? THEN e.reps ELSE 0 END) AS today,
       MAX(CASE WHEN e.request_id = ? AND e.reps = 80 THEN 40 WHEN e.request_id = ? AND e.reps = 100 THEN 50 WHEN e.request_id = ? AND e.reps = 120 THEN 0 WHEN e.reps BETWEEN 1 AND 121 THEN e.reps ELSE 0 END) AS personalBest,
@@ -66,9 +67,10 @@ export async function GET() {
       MAX(CASE WHEN e.evidence_key IS NOT NULL THEN 1 ELSE 0 END) AS hasEvidence,
       MAX(CASE WHEN a.profile_photo_key IS NOT NULL THEN 1 ELSE 0 END) AS hasProfilePhoto
        FROM athletes a LEFT JOIN entries e ON e.athlete_id = a.id
+       WHERE a.private_mode = 0 OR a.owner_user_id = ?
        GROUP BY a.id, a.athlete_number, a.name, a.last_name, a.country, a.gender, a.birth_date, a.training_log_public, a.training_log_public_until ORDER BY total DESC, month DESC, a.name ASC LIMIT 500`,
-    ).bind(month, todayDate, FELIX_40_PLUS_40, FELIX_50_PLUS_50, ROMAN_UNCONFIRMED_120, FELIX_40_PLUS_40, FELIX_50_PLUS_50, ROMAN_UNCONFIRMED_120, month).all();
-    const leaders = result.results.map((row) => {
+    ).bind(month, todayDate, FELIX_40_PLUS_40, FELIX_50_PLUS_50, ROMAN_UNCONFIRMED_120, FELIX_40_PLUS_40, FELIX_50_PLUS_50, ROMAN_UNCONFIRMED_120, month, user?.id || "").all();
+    const rows = result.results.map((row) => {
       const monthTotal = Number(row.month || 0);
       const activeDays = Number(row.activeDays || 0);
       const birthDate = String(row.birthDate || "");
@@ -87,14 +89,20 @@ export async function GET() {
       const displayedMonth = isFeatured && month === "2026-09" ? FEATURED_SEPTEMBER_LEGACY_TOTAL + monthTotal : monthTotal;
       const averagePeriodDays = isFeatured || isFelix ? inclusiveUtcDays(isFeatured ? FEATURED_START_DATE : FELIX_START_DATE, todayDate) : null;
       const birthYear = born ? born.getUTCFullYear() : null;
-      return { id, athleteNumber:Number(row.athleteNumber), name: String(row.name).split(/\\s+/)[0], lastNameInitials: String(row.lastName || "").slice(0, 2), country: String(row.country), gender:row.gender === "female" ? "female" : "male", age, birthYear, today:Number(row.today || 0), personalBest:isFeatured ? Math.max(FEATURED_HISTORICAL_PERSONAL_BEST, Number(row.personalBest || 0)) : Number(row.personalBest || 0), verifiedPersonalBest:Number(row.verifiedPersonalBest || 0), total, month:displayedMonth, activeDays, average:averagePeriodDays ? Math.round(total / averagePeriodDays) : activeDays ? Math.round(monthTotal / activeDays) : 0, averagePeriodDays, hasEvidence: Boolean(row.hasEvidence), hasProfilePhoto: Boolean(row.hasProfilePhoto), trainingLogPublic:Boolean(row.trainingLogPublic), isFeatured, challenge:isFeatured ? { day:44, total:47451, goal:100000 } : null };
+      return { verifiedAchievementMinimum:isFeatured ? 2_000_000 : id === "6486023e-5793-44d6-ae04-41c8292f37dc" ? 1_000_000 : 0, privateMode:Boolean(row.privateMode), ownerUserId:String(row.ownerUserId), id, athleteNumber:Number(row.athleteNumber), name: String(row.name).split(/\\s+/)[0], lastNameInitials: String(row.lastName || "").slice(0, 2), country: String(row.country), gender:row.gender === "female" ? "female" : "male", age, birthYear, today:Number(row.today || 0), personalBest:isFeatured ? Math.max(FEATURED_HISTORICAL_PERSONAL_BEST, Number(row.personalBest || 0)) : Number(row.personalBest || 0), verifiedPersonalBest:Number(row.verifiedPersonalBest || 0), total, month:displayedMonth, activeDays, average:averagePeriodDays ? Math.round(total / averagePeriodDays) : activeDays ? Math.round(monthTotal / activeDays) : 0, averagePeriodDays, hasEvidence: Boolean(row.hasEvidence), hasProfilePhoto: Boolean(row.hasProfilePhoto), trainingLogPublic:!Boolean(row.privateMode) && Boolean(row.trainingLogPublic), isFeatured, challenge:isFeatured ? { day:44, total:47451, goal:100000 } : null };
     });
     const monthLabel = new Intl.DateTimeFormat("de-CH", { month: "long", year: "numeric", timeZone: "Europe/Zurich" }).format(new Date());
+    const leaders = rows.filter(row => !row.privateMode).map(({ privateMode: _private, ownerUserId: _owner, ...row }) => row);
+    const ownRow = user ? rows.find(row => row.ownerUserId === user.id) : undefined;
+    const ownAthlete = ownRow ? (({ ownerUserId: _owner, ...row }) => row)(ownRow) : null;
+    const publicRoman = leaders.some(row => row.id === FEATURED_ATHLETE_ID);
+    const publicFelix = leaders.some(row => row.id === FELIX_ATHLETE_ID);
     const adjustedSummary = summary || { total: 0, month: 0, athletes: 0 };
-    const adjustedMonth = month === "2026-09" ? Number(adjustedSummary.month || 0) + FEATURED_SEPTEMBER_LEGACY_TOTAL : Number(adjustedSummary.month || 0);
-    return Response.json(
-      { leaders, summary: { ...adjustedSummary, total:Number(adjustedSummary.total || 0) + FEATURED_LEGACY_TOTAL + FELIX_LEGACY_TOTAL, month:adjustedMonth }, monthLabel },
-      { headers: { "cache-control": "no-store, no-cache, must-revalidate" } },
+    return roadCorsJson(request,
+      { leaders, ownAthlete, summary: { ...adjustedSummary,
+        total: Number(adjustedSummary.total || 0) + (publicRoman ? FEATURED_LEGACY_TOTAL : 0) + (publicFelix ? FELIX_LEGACY_TOTAL : 0),
+        month: Number(adjustedSummary.month || 0) + (publicRoman && month === "2026-09" ? FEATURED_SEPTEMBER_LEGACY_TOTAL : 0) }, monthLabel },
+      { headers: { "cache-control": "private, no-store", "vary": "Authorization, Origin" } },
     );
   } catch (error) {
     console.error("leaderboard GET failed", error);

@@ -12,6 +12,7 @@ export const athletes = sqliteTable("athletes", {
   profilePhotoKey: text("profile_photo_key"),
   profilePhotoType: text("profile_photo_type"),
   athleteNumber: integer("athlete_number").notNull(),
+  privateMode: integer("private_mode", { mode: "boolean" }).notNull().default(false),
   trainingLogPublic: integer("training_log_public", { mode: "boolean" }).notNull().default(false),
   trainingLogPublicScope: text("training_log_public_scope").notNull().default("all"),
   trainingLogPublicUntil: text("training_log_public_until"),

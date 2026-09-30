@@ -30,7 +30,7 @@ export default function SharedTrainingLogPage() {
         offset = data.nextOffset ?? null;
       }
       if (active) setEntries([...new Map(allEntries.map((entry) => [entry.id, entry])).values()]);
-      const board = await fetch("/api/leaderboard", {cache:"no-store"});
+      const board = await authorizedFetch("/api/leaderboard", {cache:"no-store"});
       if (board.ok) {
         const data = await board.json() as {leaders?:{id:string;name:string;lastNameInitials?:string}[]};
         const athlete = data.leaders?.find((item) => item.id === athleteId);

@@ -12,11 +12,11 @@ export async function GET(request: Request) {
   const user = await getSupabaseUser(request);
   if (!user) return roadCorsJson(request, { error: "Bitte zuerst anmelden." }, { status: 401 });
   const profile = await env.DB.prepare(
-    `SELECT id, athlete_number AS athleteNumber, name, last_name AS lastName, country, gender, birth_date AS birthDate, training_log_public AS trainingLogPublic, training_log_public_scope AS trainingLogPublicScope, training_log_public_until AS trainingLogPublicUntil
+    `SELECT id, athlete_number AS athleteNumber, name, last_name AS lastName, country, gender, birth_date AS birthDate, private_mode AS privateMode, training_log_public AS trainingLogPublic, training_log_public_scope AS trainingLogPublicScope, training_log_public_until AS trainingLogPublicUntil
      FROM athletes WHERE owner_user_id = ?
      ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, created_at ASC LIMIT 1`,
   ).bind(user.id, FEATURED_ATHLETE_ID).first();
-  return roadCorsJson(request, { profile: profile || null });
+  return roadCorsJson(request, { profile: profile || null }, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {
@@ -47,8 +47,7 @@ export async function POST(request: Request) {
     athleteNumber = Number(allocation?.athleteNumber || 0);
   }
   if (!athleteNumber) return roadCorsJson(request, { error:"Athleten-ID konnte nicht vergeben werden." }, { status:500 });
-  const requestedId = cleanText(body.athleteId, 64);
-  const id = existing?.id || (/^[a-zA-Z0-9-]{20,64}$/.test(requestedId) ? requestedId : crypto.randomUUID());
+  const id = existing?.id || crypto.randomUUID();
   await env.DB.prepare(
     "INSERT INTO athletes (id, athlete_number, name, last_name, country, gender, birth_date, owner_user_id, training_log_public, training_log_public_scope, training_log_public_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, last_name=excluded.last_name, country=excluded.country, gender=excluded.gender, birth_date=excluded.birth_date, owner_user_id=excluded.owner_user_id, training_log_public=excluded.training_log_public, training_log_public_scope=excluded.training_log_public_scope, training_log_public_until=excluded.training_log_public_until",
   ).bind(id, athleteNumber, name, lastName, country, gender, birthDate, user.id, trainingLogPublic, trainingLogPublicScope, trainingLogPublicUntil).run();

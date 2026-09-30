@@ -1,5 +1,7 @@
 "use client";
 
+import ProfileImage from "./profile-image";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, BellRing, BookOpen, CalendarDays, Camera, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, Globe2, HelpCircle, Languages, Medal, Mic, Pencil, RotateCcw, Save, Share2, ShieldCheck, Trash2, Trophy, Video, Volume2 } from "lucide-react";
 import { authorizedFetch, clearSession, initializeSession, startSessionMaintenance } from "./auth-client";
@@ -8,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { TRAINING_LOG_TEST_CAMPAIGN } from "./training-log-campaign";
 
 type Leader = { id: string; athleteNumber:number; name: string; lastNameInitials: string; country: string; gender:"male"|"female"; age: number | null; today:number; personalBest:number; verifiedPersonalBest:number; total: number; month: number; average: number; averagePeriodDays?:number|null; activeDays: number; hasEvidence: boolean; hasProfilePhoto: boolean; trainingLogPublic:boolean; isFeatured?:boolean; challenge?:{ day:number; total:number; goal:number }|null };
-type BoardData = { leaders: Leader[]; summary: { total: number; month: number; athletes: number }; monthLabel: string };
+type BoardData = { ownAthlete?: Leader | null; leaders: Leader[]; summary: { total: number; month: number; athletes: number }; monthLabel: string };
 type HistoryEntry = { id: number; reps: number; setReps: number[]; entryDate: string; createdAt: string; editedAt: string | null; hasEvidence: boolean };
 const PROFILE_KEY = "pushup-world-profile-v1";
 const MAX_SET_REPS = 121;
@@ -99,6 +101,10 @@ export default function Home() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [privateMode, setPrivateMode] = useState(false);
+  const [privacySaving, setPrivacySaving] = useState(false);
+  const [privacyLoaded, setPrivacyLoaded] = useState(false);
+  const [privacyError, setPrivacyError] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [contextHelp, setContextHelp] = useState(false);
   const [iconHelpOpen, setIconHelpOpen] = useState(false);
@@ -108,6 +114,8 @@ export default function Home() {
   const [selectedHistoryPeriod, setSelectedHistoryPeriod] = useState(() => localDayKey().slice(0, 7));
   const [historyCalendarOpen, setHistoryCalendarOpen] = useState(false);
   const [historyCalendarYear, setHistoryCalendarYear] = useState(() => Number(localDayKey().slice(0, 4)));
+  const [evidenceUrl, setEvidenceUrl] = useState("");
+  useEffect(() => () => { if (evidenceUrl) URL.revokeObjectURL(evidenceUrl); }, [evidenceUrl]);
   const [video, setVideo] = useState<File | null>(null);
   const [photoVersion, setPhotoVersion] = useState(0);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -184,7 +192,7 @@ export default function Home() {
 
   const loadBoard = useCallback(async () => {
     try {
-      const response = await fetch("/api/leaderboard", { cache: "no-store" });
+      const response = await authorizedFetch("/api/leaderboard", { cache: "no-store" });
       const data = (await response.json()) as BoardData & { error?: string };
       if (!response.ok) throw new Error(data.error || "Rangliste nicht verfügbar");
       setBoard(data);
@@ -242,9 +250,11 @@ export default function Home() {
       if (!user) return;
       if (user.gender) setGender(user.gender);
       const response = await authorizedFetch("/api/profile", { cache:"no-store", signal:AbortSignal.timeout(12000) });
-      const data = await response.json() as { profile?: { id:string; athleteNumber?:number; name:string; lastName?:string; country:string; gender?:string; birthDate?:string; trainingLogPublic?:boolean; trainingLogPublicScope?:"today"|"all"; trainingLogPublicUntil?:string|null } | null };
+      const data = await response.json() as { profile?: { id:string; athleteNumber?:number; name:string; lastName?:string; country:string; gender?:string; birthDate?:string; privateMode?:boolean; trainingLogPublic?:boolean; trainingLogPublicScope?:"today"|"all"; trainingLogPublicUntil?:string|null } | null };
       if (response.ok && data.profile) {
         applyProfile(data.profile);
+        setPrivateMode(Boolean(data.profile.privateMode)); setPrivacyLoaded(true);
+        await loadBoard();
         // Decide whether to show the greeting before revealing the dashboard.
         // A later effect caused the input to flash and then disappear under a dialog.
         const greetingName = data.profile.name?.trim();
@@ -356,7 +366,7 @@ export default function Home() {
   const profileComplete = name.trim().length >= 2 && country.trim().length >= 2;
   const monthlyLeaders = useMemo(() => [...(board?.leaders || [])].filter((leader) => leader.month > 0).sort((a, b) => b.month - a.month || b.total - a.total), [board]);
   const totalLeaders = useMemo(() => [...(board?.leaders || [])].sort((a, b) => b.total - a.total || b.month - a.month), [board]);
-  const currentAthlete = useMemo(() => (board?.leaders || []).find((leader) => leader.id === athleteId), [board, athleteId]);
+  const currentAthlete = useMemo(() => board?.ownAthlete?.id === athleteId ? board.ownAthlete : (board?.leaders || []).find((leader) => leader.id === athleteId), [board, athleteId]);
   const myMonthRank = useMemo(() => monthlyLeaders.findIndex((leader) => leader.id === athleteId), [monthlyLeaders, athleteId]);
   const myTotalRank = useMemo(() => totalLeaders.findIndex((leader) => leader.id === athleteId), [totalLeaders, athleteId]);
   const projectionLeaders = useMemo(
@@ -584,6 +594,25 @@ export default function Home() {
     if (response.ok) await Promise.all([loadBoard(), loadHistory(athleteId)]);
   }
 
+  async function openEvidence(entryId:number) {
+    try {
+      const response = await authorizedFetch(`/api/evidence?entryId=${entryId}`, {cache:"no-store"});
+      if (!response.ok) throw new Error("Video-Nachweis nicht verfügbar.");
+      setEvidenceUrl(URL.createObjectURL(await response.blob()));
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Video-Nachweis nicht verfügbar."); }
+  }
+
+  async function savePrivacy(value: boolean) {
+    setPrivacySaving(true); setPrivacyError("");
+    try {
+      const response = await authorizedFetch("/api/privacy", {method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify({privateMode:value})});
+      const data = await response.json() as {privateMode?:boolean;error?:string};
+      if (!response.ok || typeof data.privateMode !== "boolean") throw new Error(data.error || "Privacy konnte nicht gespeichert werden.");
+      setPrivateMode(data.privateMode); await loadBoard();
+    } catch (error) { setPrivacyError(error instanceof Error ? error.message : "Privacy konnte nicht gespeichert werden."); }
+    finally { setPrivacySaving(false); }
+  }
+
   async function saveProfile() {
     if (!authUser) { setMessage("Bitte zuerst anmelden."); return; }
     if (!profileComplete) { setMessage("Bitte Vorname und Land vollständig eintragen."); return; }
@@ -597,6 +626,8 @@ export default function Home() {
       const result = await response.json() as { error?:string; profile?:{ id:string; athleteNumber:number; name:string; lastName:string; country:string; gender:string; birthDate:string; trainingLogPublic:boolean; trainingLogPublicScope:"today"|"all"; trainingLogPublicUntil?:string|null } };
       if (!response.ok || !result.profile) throw new Error(result.error || "Profil konnte nicht gespeichert werden.");
       applyProfile(result.profile);
+      const privacyResponse = await authorizedFetch("/api/privacy", {cache:"no-store"});
+      if (privacyResponse.ok) { const privacy = await privacyResponse.json() as {privateMode:boolean}; setPrivateMode(privacy.privateMode); setPrivacyLoaded(true); }
       setTemporaryTrainingLogUntil(result.profile.trainingLogPublicUntil || "");
       setMessage(`Profil gespeichert · Athleten-ID ${String(result.profile.athleteNumber).padStart(4, "0")}`);
       await loadBoard();
@@ -643,7 +674,8 @@ export default function Home() {
 
   return (
     <main className={contextHelp ? "contextHelpOn" : ""} aria-busy={!authReady}>
-      <Dialog open={iconHelpOpen} onOpenChange={setIconHelpOpen}>
+      <Dialog open={Boolean(evidenceUrl)} onOpenChange={open => { if(!open) setEvidenceUrl(""); }}><DialogContent><DialogHeader><DialogTitle>Video-Nachweis</DialogTitle><DialogDescription>Dein gespeicherter Trainingsnachweis</DialogDescription></DialogHeader>{evidenceUrl && <video src={evidenceUrl} controls style={{width:"100%"}} />}</DialogContent></Dialog>
+    <Dialog open={iconHelpOpen} onOpenChange={setIconHelpOpen}>
         <DialogContent className="iconHelpDialog" aria-describedby="dashboard-icon-help">
           <DialogHeader><DialogTitle>Dashboard: Icons und Funktionen</DialogTitle><DialogDescription id="dashboard-icon-help">Tippe auf ein Icon, um seine Funktion zu nutzen.</DialogDescription></DialogHeader>
           <ul className="iconHelpList">
@@ -709,7 +741,7 @@ export default function Home() {
           <nav className="moduleQuickNav" aria-label="Modulnavigation">
             <a className="headerQuickLink statisticsHeaderLink" href="/athletes" title={t("statistics")} aria-label={t("statistics")}><BarChart3 size={21} /></a>
             <span className="profilePhotoControl" title="Dein Profilfoto">
-              {photoUploaded || currentAthlete?.hasProfilePhoto ? <img src={`/api/profile-photo?athleteId=${encodeURIComponent(athleteId)}&v=${photoVersion}`} alt="Dein Profilfoto" /> : <img src="/profile-placeholder-globe.png" alt="THE.HUMAN.CHOICE Globus" />}
+              {photoUploaded || currentAthlete?.hasProfilePhoto ? <ProfileImage src={`/api/profile-photo?athleteId=${encodeURIComponent(athleteId)}&v=${photoVersion}`} alt="Dein Profilfoto" /> : <img src="/profile-placeholder-globe.png" alt="THE.HUMAN.CHOICE Globus" />}
             </span>
             {photoStatus && <span className="photoUploadStatus" role="status">{photoStatus}</span>}
             <a className="headerQuickLink roadHeaderLink" href="/road-to-100/index.html" title="Road to 100" aria-label="Road to 100"><strong>100</strong></a>
@@ -755,13 +787,14 @@ export default function Home() {
           </button>
           {profileOpen && <div className="profileCard">
             <details id="profile-personal" className="profileSettingsGroup" open><summary><Pencil size={19}/> Persönliche Daten <ChevronDown size={18}/></summary><div className="profileSettingsGroupBody">
-            <div id="profile-photo-settings" className="profilePhotoSettings"><strong>Profilfoto</strong><div className="profilePhotoSettingsRow">{photoUploaded || currentAthlete?.hasProfilePhoto ? <img src={`/api/profile-photo?athleteId=${encodeURIComponent(athleteId)}&v=${photoVersion}`} alt="Dein aktuelles Profilfoto" /> : <img src="/profile-placeholder-globe.png" alt="THE.HUMAN.CHOICE Globus als Profilbildplatzhalter" />}<label className="profilePhotoChange"><Camera size={18}/><span>{uploadingPhoto ? "Foto wird gespeichert …" : "Foto auswählen oder ändern"}</span><input type="file" accept="image/*,.heic,.heif" aria-label="Profilfoto auswählen oder ändern" disabled={uploadingPhoto} onClick={() => setPhotoStatus("Foto auswählen …")} onChange={(event) => { const selected = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (selected) void uploadProfilePhoto(selected); else setPhotoStatus(""); }} /></label></div><small>Nur ein echtes Foto des Athleten. Größere Handyfotos werden automatisch verkleinert.</small></div>
+            <div id="profile-photo-settings" className="profilePhotoSettings"><strong>Profilfoto</strong><div className="profilePhotoSettingsRow">{photoUploaded || currentAthlete?.hasProfilePhoto ? <ProfileImage src={`/api/profile-photo?athleteId=${encodeURIComponent(athleteId)}&v=${photoVersion}`} alt="Dein aktuelles Profilfoto" /> : <img src="/profile-placeholder-globe.png" alt="THE.HUMAN.CHOICE Globus als Profilbildplatzhalter" />}<label className="profilePhotoChange"><Camera size={18}/><span>{uploadingPhoto ? "Foto wird gespeichert …" : "Foto auswählen oder ändern"}</span><input type="file" accept="image/*,.heic,.heif" aria-label="Profilfoto auswählen oder ändern" disabled={uploadingPhoto} onClick={() => setPhotoStatus("Foto auswählen …")} onChange={(event) => { const selected = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (selected) void uploadProfilePhoto(selected); else setPhotoStatus(""); }} /></label></div><small>Nur ein echtes Foto des Athleten. Größere Handyfotos werden automatisch verkleinert.</small></div>
             <label><span>{t("firstName")}</span><input value={name} onChange={(event) => setName(event.target.value)} maxLength={40} placeholder={t("yourName")} autoComplete="given-name" /></label>
             <label><span>{t("lastName")}</span><input value={lastName} onChange={(event) => setLastName(event.target.value)} maxLength={60} placeholder={t("yourLastName")} autoComplete="family-name" /></label>
             <label><span>{t("country")}</span><input value={country} onChange={(event) => setCountry(event.target.value)} maxLength={56} placeholder={t("countryExample")} autoComplete="country-name" /></label>
             <label><span>{t("birthDate")} <small>({t("optional")})</small></span><input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" /></label>
             <fieldset className="genderChoice profileGender"><legend>{t("leaderboard")}</legend><label><input type="radio" name="profile-gender" checked={gender === "male"} onChange={() => setGender("male")} /><span>{t("male")}</span></label><label><input type="radio" name="profile-gender" checked={gender === "female"} onChange={() => setGender("female")} /><span>{t("female")}</span></label></fieldset>
             </div></details>
+            <details className="profileSettingsGroup" open><summary>Privacy · Community Visibility</summary><div className="profileSettingsGroupBody"><strong>PRIVATE MODE</strong><p>Hide my training activity from the community</p><label><input type="checkbox" role="switch" checked={privateMode} disabled={!privacyLoaded || privacySaving || !authUser} onChange={event => void savePrivacy(event.target.checked)} /> {privacyLoaded ? privateMode ? "ON" : "OFF" : "…"}</label><small>{privacySaving ? "Wird gespeichert …" : "Deine eigenen Daten bleiben vollständig erhalten. Private Mode hat Vorrang vor Trainingsbuch-Freigaben."}</small>{privacyError && <p role="alert">{privacyError}</p>}</div></details>
             <details id="profile-privacy" className="profileSettingsGroup"><summary><BookOpen size={19}/> Trainingsbuch und Freigabe <ChevronDown size={18}/></summary><div className="profileSettingsGroupBody">
             <div className="trainingPrivacy"><strong>Trainingsbuch: Freigabe</strong><fieldset className="trainingPrivacyScope"><legend>Was darf die Community sehen?</legend><label><input type="radio" name="training-log-scope" checked={trainingLogPublicScope === "today"} onChange={() => setTrainingLogPublicScope("today")} /><span>Nur den heutigen Tag</span></label><label><input type="radio" name="training-log-scope" checked={trainingLogPublicScope === "all"} onChange={() => setTrainingLogPublicScope("all")} /><span>Alle Trainingstage</span></label></fieldset><fieldset className="trainingPrivacyScope"><legend>Wie lange?</legend><label><input type="radio" name="training-log-duration" checked={trainingLogShareDuration === "private"} onChange={() => setTrainingLogShareDuration("private")} /><span>Privat lassen</span></label><label><input type="radio" name="training-log-duration" checked={trainingLogShareDuration === "day"} onChange={() => setTrainingLogShareDuration("day")} /><span>24 Stunden ab dem Speichern</span></label><label><input type="radio" name="training-log-duration" checked={trainingLogShareDuration === "always"} onChange={() => setTrainingLogShareDuration("always")} /><span>Dauerhaft, bis ich es beende</span></label></fieldset><small>Änderungen werden erst mit „Profil speichern“ wirksam.</small></div>
             {temporaryTrainingLogActive && <div className="temporarySharingStatus"><span><strong>24-Stunden-Freigabe aktiv</strong><small>Endet automatisch am {new Intl.DateTimeFormat(locale,{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(temporaryTrainingLogUntil))}.</small></span><button type="button" onClick={disableTemporaryTrainingLog}>Jetzt ausschalten</button></div>}
@@ -839,7 +872,7 @@ export default function Home() {
                     <strong>{entry.setReps.length > 1 ? `${entry.reps.toLocaleString(locale)} (${entry.setReps.join(" + ")})` : entry.reps.toLocaleString(locale)} <small>Push-ups</small></strong>
                     <span className="entryMeta"><time dateTime={entry.createdAt}>{formatEntryTime(entry.createdAt, locale)}</time><small> · {entry.editedAt ? t("corrected") : t("stored")}{entry.hasEvidence && ` · ${t("withVideo")}`}</small></span>
                     <div>
-                      {entry.hasEvidence && <a href={`/api/evidence?entryId=${entry.id}`} target="_blank" rel="noreferrer" aria-label="Video-Nachweis ansehen"><Video size={18} /></a>}
+                      {entry.hasEvidence && <button type="button" onClick={() => void openEvidence(entry.id)} aria-label="Video-Nachweis ansehen"><Video size={18} /></button>}
                       {entry.setReps.length === 1 && <button onClick={() => correctEntry(entry)} aria-label="Eintrag korrigieren"><Pencil size={18} /></button>}
                       <button className="deleteAction" onClick={() => deleteEntry(entry)} aria-label="Eintrag löschen"><Trash2 size={18} /></button>
                     </div>
