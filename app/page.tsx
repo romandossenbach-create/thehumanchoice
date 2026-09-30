@@ -1,5 +1,4 @@
 "use client";
-
 import ProfileImage from "./profile-image";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { TRAINING_LOG_TEST_CAMPAIGN } from "./training-log-campaign";
 
 type Leader = { id: string; athleteNumber:number; name: string; lastNameInitials: string; country: string; gender:"male"|"female"; age: number | null; today:number; personalBest:number; verifiedPersonalBest:number; total: number; month: number; average: number; averagePeriodDays?:number|null; activeDays: number; hasEvidence: boolean; hasProfilePhoto: boolean; trainingLogPublic:boolean; isFeatured?:boolean; challenge?:{ day:number; total:number; goal:number }|null };
-type BoardData = { ownAthlete?: Leader | null; leaders: Leader[]; summary: { total: number; month: number; athletes: number }; monthLabel: string };
+type BoardData = { leaders: Leader[]; summary: { total: number; month: number; athletes: number }; monthLabel: string };
 type HistoryEntry = { id: number; reps: number; setReps: number[]; entryDate: string; createdAt: string; editedAt: string | null; hasEvidence: boolean };
 const PROFILE_KEY = "pushup-world-profile-v1";
 const MAX_SET_REPS = 121;
@@ -97,14 +96,11 @@ export default function Home() {
   const [athleteId, setAthleteId] = useState("");
   const [athleteNumber, setAthleteNumber] = useState(0);
   const [board, setBoard] = useState<BoardData | null>(null);
+  const [activeChallenge, setActiveChallenge] = useState<{days:number;target:number;start:string;total:number;timeZone?:string}|null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [privateMode, setPrivateMode] = useState(false);
-  const [privacySaving, setPrivacySaving] = useState(false);
-  const [privacyLoaded, setPrivacyLoaded] = useState(false);
-  const [privacyError, setPrivacyError] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [contextHelp, setContextHelp] = useState(false);
   const [iconHelpOpen, setIconHelpOpen] = useState(false);
@@ -114,8 +110,6 @@ export default function Home() {
   const [selectedHistoryPeriod, setSelectedHistoryPeriod] = useState(() => localDayKey().slice(0, 7));
   const [historyCalendarOpen, setHistoryCalendarOpen] = useState(false);
   const [historyCalendarYear, setHistoryCalendarYear] = useState(() => Number(localDayKey().slice(0, 4)));
-  const [evidenceUrl, setEvidenceUrl] = useState("");
-  useEffect(() => () => { if (evidenceUrl) URL.revokeObjectURL(evidenceUrl); }, [evidenceUrl]);
   const [video, setVideo] = useState<File | null>(null);
   const [photoVersion, setPhotoVersion] = useState(0);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -127,6 +121,9 @@ export default function Home() {
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const savingRef = useRef(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
+  const [privateMode, setPrivateMode] = useState(false);
+  const [ownerPerformance, setOwnerPerformance] = useState<Leader|null>(null);
+  const [privacySaving, setPrivacySaving] = useState(false);
   const [trainingLogShareDuration, setTrainingLogShareDuration] = useState<"private"|"day"|"always">("private");
   const [trainingLogPublicScope, setTrainingLogPublicScope] = useState<"today"|"all">("all");
   const [temporaryTrainingLogUntil, setTemporaryTrainingLogUntil] = useState("");
@@ -192,15 +189,25 @@ export default function Home() {
 
   const loadBoard = useCallback(async () => {
     try {
-      const response = await authorizedFetch("/api/leaderboard", { cache: "no-store" });
-      const data = (await response.json()) as BoardData & { error?: string };
+      const response = await authorizedFetch("/api/leaderboard?owner=1", { cache: "no-store" });
+      const data = (await response.json()) as BoardData & { error?: string; ownerPerformance?:Leader|null };
       if (!response.ok) throw new Error(data.error || "Rangliste nicht verfügbar");
       setBoard(data);
+      setOwnerPerformance(data.ownerPerformance || null);
     } catch {
       setMessage("Die Rangliste kann gerade nicht geladen werden.");
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const loadChallenge = useCallback(async () => {
+    try {
+      const response = await authorizedFetch("/api/challenge", { cache:"no-store" });
+      if (!response.ok) { setActiveChallenge(null); return; }
+      const data = await response.json() as {challenge:typeof activeChallenge};
+      setActiveChallenge(data.challenge);
+    } catch { setActiveChallenge(null); }
   }, []);
 
   const loadHistory = useCallback(async (id: string) => {
@@ -248,13 +255,14 @@ export default function Home() {
     initializeSession().then(async (user) => {
       setAuthUser(user);
       if (!user) return;
+      void loadChallenge();
       if (user.gender) setGender(user.gender);
       const response = await authorizedFetch("/api/profile", { cache:"no-store", signal:AbortSignal.timeout(12000) });
       const data = await response.json() as { profile?: { id:string; athleteNumber?:number; name:string; lastName?:string; country:string; gender?:string; birthDate?:string; privateMode?:boolean; trainingLogPublic?:boolean; trainingLogPublicScope?:"today"|"all"; trainingLogPublicUntil?:string|null } | null };
       if (response.ok && data.profile) {
         applyProfile(data.profile);
-        setPrivateMode(Boolean(data.profile.privateMode)); setPrivacyLoaded(true);
-        await loadBoard();
+        setPrivateMode(Boolean(data.profile.privateMode));
+        void loadBoard();
         // Decide whether to show the greeting before revealing the dashboard.
         // A later effect caused the input to flash and then disappear under a dialog.
         const greetingName = data.profile.name?.trim();
@@ -273,7 +281,7 @@ export default function Home() {
         const campaignNow = Date.now();
         const campaignActive = TRAINING_LOG_TEST_CAMPAIGN.active && campaignNow >= Date.parse(TRAINING_LOG_TEST_CAMPAIGN.startsAt) && campaignNow < Date.parse(TRAINING_LOG_TEST_CAMPAIGN.endsAt);
         const temporaryActive = Boolean(temporaryUntil && Date.parse(temporaryUntil) > campaignNow);
-        if (campaignActive && !data.profile.trainingLogPublic && !temporaryActive && localStorage.getItem(`${TRAINING_LOG_TEST_CAMPAIGN.id}-dismissed`) !== "yes") setTrainingLogInviteOpen(true);
+        if (!data.profile.privateMode && campaignActive && !data.profile.trainingLogPublic && !temporaryActive && localStorage.getItem(`${TRAINING_LOG_TEST_CAMPAIGN.id}-dismissed`) !== "yes") setTrainingLogInviteOpen(true);
       }
       else if (response.ok) {
         localStorage.removeItem(PROFILE_KEY);
@@ -283,7 +291,7 @@ export default function Home() {
       }
     }).catch(() => { setMessage("Die Verbindung ist gerade nicht verfügbar. Bitte lade die Seite erneut."); }).finally(() => setAuthReady(true));
     loadBoard();
-  }, [applyProfile, loadBoard]);
+  }, [applyProfile, loadBoard, loadChallenge]);
 
   useEffect(() => {
     if (authReady) { setShowSlowAuthHint(false); return; }
@@ -363,10 +371,24 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, [cooldownUntil]);
 
+  useEffect(() => {
+    let lastDay = new Date().toDateString();
+    const tick = () => {
+      setClockNow(Date.now());
+      const day = new Date().toDateString();
+      if (day !== lastDay) { lastDay = day; void loadChallenge(); }
+    };
+    const refresh = () => { tick(); void loadChallenge(); };
+    const timer = window.setInterval(tick, 30000);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("storage", refresh); };
+  }, [loadChallenge]);
+
   const profileComplete = name.trim().length >= 2 && country.trim().length >= 2;
   const monthlyLeaders = useMemo(() => [...(board?.leaders || [])].filter((leader) => leader.month > 0).sort((a, b) => b.month - a.month || b.total - a.total), [board]);
   const totalLeaders = useMemo(() => [...(board?.leaders || [])].sort((a, b) => b.total - a.total || b.month - a.month), [board]);
-  const currentAthlete = useMemo(() => board?.ownAthlete?.id === athleteId ? board.ownAthlete : (board?.leaders || []).find((leader) => leader.id === athleteId), [board, athleteId]);
+  const currentAthlete = useMemo(() => ownerPerformance?.id === athleteId ? ownerPerformance : (board?.leaders || []).find((leader) => leader.id === athleteId), [board, athleteId, ownerPerformance]);
   const myMonthRank = useMemo(() => monthlyLeaders.findIndex((leader) => leader.id === athleteId), [monthlyLeaders, athleteId]);
   const myTotalRank = useMemo(() => totalLeaders.findIndex((leader) => leader.id === athleteId), [totalLeaders, athleteId]);
   const projectionLeaders = useMemo(
@@ -474,6 +496,20 @@ export default function Home() {
     } finally { bitmap.close(); }
   }
 
+  async function togglePrivateMode() {
+    if (privacySaving) return;
+    setPrivacySaving(true);
+    try {
+      const response = await authorizedFetch("/api/privacy", {method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify({privateMode:!privateMode})});
+      const data = await response.json() as {privateMode?:boolean;error?:string};
+      if (!response.ok) throw new Error(data.error || "Privacy konnte nicht gespeichert werden.");
+      setPrivateMode(Boolean(data.privateMode));
+      setTrainingLogInviteOpen(false);
+      await loadBoard();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Privacy konnte nicht gespeichert werden."); }
+    finally { setPrivacySaving(false); }
+  }
+
   async function uploadProfilePhoto(file?: File) {
     if (!file) return;
     if (!authUser || !athleteId) { const notice = !authUser ? "Bitte zuerst anmelden." : "Bitte zuerst dein Profil speichern."; setPhotoStatus(notice); setMessage(notice); if (authUser) setProfileOpen(true); return; }
@@ -555,7 +591,7 @@ export default function Home() {
       setManual("");
       setVideo(null);
       setSelectedHistoryPeriod(localDayKey().slice(0, 7));
-      await Promise.all([loadBoard(), loadHistory(savedId)]);
+      await Promise.all([loadBoard(), loadHistory(savedId), loadChallenge()]);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Speichern fehlgeschlagen.");
     } finally {
@@ -594,25 +630,6 @@ export default function Home() {
     if (response.ok) await Promise.all([loadBoard(), loadHistory(athleteId)]);
   }
 
-  async function openEvidence(entryId:number) {
-    try {
-      const response = await authorizedFetch(`/api/evidence?entryId=${entryId}`, {cache:"no-store"});
-      if (!response.ok) throw new Error("Video-Nachweis nicht verfügbar.");
-      setEvidenceUrl(URL.createObjectURL(await response.blob()));
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Video-Nachweis nicht verfügbar."); }
-  }
-
-  async function savePrivacy(value: boolean) {
-    setPrivacySaving(true); setPrivacyError("");
-    try {
-      const response = await authorizedFetch("/api/privacy", {method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify({privateMode:value})});
-      const data = await response.json() as {privateMode?:boolean;error?:string};
-      if (!response.ok || typeof data.privateMode !== "boolean") throw new Error(data.error || "Privacy konnte nicht gespeichert werden.");
-      setPrivateMode(data.privateMode); await loadBoard();
-    } catch (error) { setPrivacyError(error instanceof Error ? error.message : "Privacy konnte nicht gespeichert werden."); }
-    finally { setPrivacySaving(false); }
-  }
-
   async function saveProfile() {
     if (!authUser) { setMessage("Bitte zuerst anmelden."); return; }
     if (!profileComplete) { setMessage("Bitte Vorname und Land vollständig eintragen."); return; }
@@ -623,11 +640,9 @@ export default function Home() {
         headers:{ "content-type":"application/json" },
         body:JSON.stringify({ athleteId:athleteId || crypto.randomUUID(), name:name.trim(), lastName:lastName.trim(), country:country.trim(), gender, birthDate, trainingLogShareDuration, trainingLogPublicScope }),
       });
-      const result = await response.json() as { error?:string; profile?:{ id:string; athleteNumber:number; name:string; lastName:string; country:string; gender:string; birthDate:string; trainingLogPublic:boolean; trainingLogPublicScope:"today"|"all"; trainingLogPublicUntil?:string|null } };
+      const result = await response.json() as { error?:string; profile?:{ id:string; athleteNumber:number; name:string; lastName:string; country:string; gender:string; birthDate:string; privateMode:boolean; trainingLogPublic:boolean; trainingLogPublicScope:"today"|"all"; trainingLogPublicUntil?:string|null } };
       if (!response.ok || !result.profile) throw new Error(result.error || "Profil konnte nicht gespeichert werden.");
       applyProfile(result.profile);
-      const privacyResponse = await authorizedFetch("/api/privacy", {cache:"no-store"});
-      if (privacyResponse.ok) { const privacy = await privacyResponse.json() as {privateMode:boolean}; setPrivateMode(privacy.privateMode); setPrivacyLoaded(true); }
       setTemporaryTrainingLogUntil(result.profile.trainingLogPublicUntil || "");
       setMessage(`Profil gespeichert · Athleten-ID ${String(result.profile.athleteNumber).padStart(4, "0")}`);
       await loadBoard();
@@ -674,8 +689,7 @@ export default function Home() {
 
   return (
     <main className={contextHelp ? "contextHelpOn" : ""} aria-busy={!authReady}>
-      <Dialog open={Boolean(evidenceUrl)} onOpenChange={open => { if(!open) setEvidenceUrl(""); }}><DialogContent><DialogHeader><DialogTitle>Video-Nachweis</DialogTitle><DialogDescription>Dein gespeicherter Trainingsnachweis</DialogDescription></DialogHeader>{evidenceUrl && <video src={evidenceUrl} controls style={{width:"100%"}} />}</DialogContent></Dialog>
-    <Dialog open={iconHelpOpen} onOpenChange={setIconHelpOpen}>
+      <Dialog open={iconHelpOpen} onOpenChange={setIconHelpOpen}>
         <DialogContent className="iconHelpDialog" aria-describedby="dashboard-icon-help">
           <DialogHeader><DialogTitle>Dashboard: Icons und Funktionen</DialogTitle><DialogDescription id="dashboard-icon-help">Tippe auf ein Icon, um seine Funktion zu nutzen.</DialogDescription></DialogHeader>
           <ul className="iconHelpList">
@@ -794,9 +808,8 @@ export default function Home() {
             <label><span>{t("birthDate")} <small>({t("optional")})</small></span><input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" /></label>
             <fieldset className="genderChoice profileGender"><legend>{t("leaderboard")}</legend><label><input type="radio" name="profile-gender" checked={gender === "male"} onChange={() => setGender("male")} /><span>{t("male")}</span></label><label><input type="radio" name="profile-gender" checked={gender === "female"} onChange={() => setGender("female")} /><span>{t("female")}</span></label></fieldset>
             </div></details>
-            <details className="profileSettingsGroup" open><summary>Privacy · Community Visibility</summary><div className="profileSettingsGroupBody"><strong>PRIVATE MODE</strong><p>Hide my training activity from the community</p><label><input type="checkbox" role="switch" checked={privateMode} disabled={!privacyLoaded || privacySaving || !authUser} onChange={event => void savePrivacy(event.target.checked)} /> {privacyLoaded ? privateMode ? "ON" : "OFF" : "…"}</label><small>{privacySaving ? "Wird gespeichert …" : "Deine eigenen Daten bleiben vollständig erhalten. Private Mode hat Vorrang vor Trainingsbuch-Freigaben."}</small>{privacyError && <p role="alert">{privacyError}</p>}</div></details>
-            <details id="profile-privacy" className="profileSettingsGroup"><summary><BookOpen size={19}/> Trainingsbuch und Freigabe <ChevronDown size={18}/></summary><div className="profileSettingsGroupBody">
-            <div className="trainingPrivacy"><strong>Trainingsbuch: Freigabe</strong><fieldset className="trainingPrivacyScope"><legend>Was darf die Community sehen?</legend><label><input type="radio" name="training-log-scope" checked={trainingLogPublicScope === "today"} onChange={() => setTrainingLogPublicScope("today")} /><span>Nur den heutigen Tag</span></label><label><input type="radio" name="training-log-scope" checked={trainingLogPublicScope === "all"} onChange={() => setTrainingLogPublicScope("all")} /><span>Alle Trainingstage</span></label></fieldset><fieldset className="trainingPrivacyScope"><legend>Wie lange?</legend><label><input type="radio" name="training-log-duration" checked={trainingLogShareDuration === "private"} onChange={() => setTrainingLogShareDuration("private")} /><span>Privat lassen</span></label><label><input type="radio" name="training-log-duration" checked={trainingLogShareDuration === "day"} onChange={() => setTrainingLogShareDuration("day")} /><span>24 Stunden ab dem Speichern</span></label><label><input type="radio" name="training-log-duration" checked={trainingLogShareDuration === "always"} onChange={() => setTrainingLogShareDuration("always")} /><span>Dauerhaft, bis ich es beende</span></label></fieldset><small>Änderungen werden erst mit „Profil speichern“ wirksam.</small></div>
+            <details id="profile-privacy" className="profileSettingsGroup"><summary><BookOpen size={19}/> Privacy <ChevronDown size={18}/></summary><div className="profileSettingsGroupBody">
+            <div className="trainingPrivacy"><strong>Community Visibility</strong><label><span>PRIVATE MODE — Hide my training activity from the community</span><button type="button" role="switch" aria-checked={privateMode} disabled={privacySaving || !athleteId} onClick={() => void togglePrivateMode()}>{privacySaving ? "…" : privateMode ? "ON" : "OFF"}</button></label><small>Gespeichert für deinen Account auf allen Geräten. Deine Trainingsdaten bleiben erhalten.</small></div><div className="trainingPrivacy"><strong>Trainingsbuch: Freigabe</strong><fieldset className="trainingPrivacyScope"><legend>Was darf die Community sehen?</legend><label><input type="radio" name="training-log-scope" checked={trainingLogPublicScope === "today"} onChange={() => setTrainingLogPublicScope("today")} /><span>Nur den heutigen Tag</span></label><label><input type="radio" name="training-log-scope" checked={trainingLogPublicScope === "all"} onChange={() => setTrainingLogPublicScope("all")} /><span>Alle Trainingstage</span></label></fieldset><fieldset className="trainingPrivacyScope"><legend>Wie lange?</legend><label><input type="radio" name="training-log-duration" checked={trainingLogShareDuration === "private"} onChange={() => setTrainingLogShareDuration("private")} /><span>Privat lassen</span></label><label><input type="radio" name="training-log-duration" checked={trainingLogShareDuration === "day"} onChange={() => setTrainingLogShareDuration("day")} /><span>24 Stunden ab dem Speichern</span></label><label><input type="radio" name="training-log-duration" checked={trainingLogShareDuration === "always"} onChange={() => setTrainingLogShareDuration("always")} /><span>Dauerhaft, bis ich es beende</span></label></fieldset><small>Änderungen werden erst mit „Profil speichern“ wirksam.</small></div>
             {temporaryTrainingLogActive && <div className="temporarySharingStatus"><span><strong>24-Stunden-Freigabe aktiv</strong><small>Endet automatisch am {new Intl.DateTimeFormat(locale,{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(temporaryTrainingLogUntil))}.</small></span><button type="button" onClick={disableTemporaryTrainingLog}>Jetzt ausschalten</button></div>}
             </div></details>
             <details id="profile-voice" className="profileSettingsGroup"><summary><Volume2 size={19}/> Stimme und Morgengruß <ChevronDown size={18}/></summary><div className="profileSettingsGroupBody">
@@ -823,6 +836,20 @@ export default function Home() {
         <div><span>MONTH</span><strong>{currentAthlete?.month.toLocaleString(locale) ?? "–"}</strong><small>{board?.monthLabel ?? "–"}</small></div>
         <div><span>TOTAL</span><strong>{currentAthlete?.total.toLocaleString(locale) ?? "–"}</strong><small>{currentAthlete ? `ID ${String(currentAthlete.athleteNumber).padStart(4, "0")}` : t("sinceStart")}</small></div>
       </section>
+
+      {activeChallenge && (() => {
+        const zone = activeChallenge.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const dayKey = new Intl.DateTimeFormat("sv-SE", {timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(clockNow));
+        const startKey = new Intl.DateTimeFormat("sv-SE", {timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(activeChallenge.start));
+        const elapsed = Math.floor((Date.parse(`${dayKey}T12:00:00Z`) - Date.parse(`${startKey}T12:00:00Z`)) / 86400000) + 1;
+        const day = Math.max(0, Math.min(activeChallenge.days, elapsed));
+        if (elapsed > activeChallenge.days || activeChallenge.days <= 0 || activeChallenge.target <= 0) return null;
+        const performance = day ? Math.round(activeChallenge.total / (day * activeChallenge.target / activeChallenge.days) * 100) : 0;
+        return <section className="pushChallengeCard" aria-label="Your Push Challenge">
+          <div className="pushChallengeMetric"><span aria-label="Push-ups">P</span><div className="pushChallengeTrack" role="progressbar" aria-label="Push-up progress" aria-valuenow={activeChallenge.total} aria-valuemin={0} aria-valuemax={activeChallenge.target}><div style={{width:`${Math.max(0,Math.min(100,activeChallenge.total / activeChallenge.target * 100))}%`}} /></div><strong aria-label={`${activeChallenge.total.toLocaleString("de-CH")} von ${activeChallenge.target.toLocaleString("de-CH")} Push-ups`}>{activeChallenge.total.toLocaleString("de-CH")} / {activeChallenge.target.toLocaleString("en", {notation:"compact",maximumFractionDigits:0})}</strong></div>
+          <div className="pushChallengeMetric"><span aria-label="Challenge day">D</span><div className="pushChallengeTrack" role="progressbar" aria-label="Challenge days" aria-valuenow={day} aria-valuemin={0} aria-valuemax={activeChallenge.days}><div style={{width:`${day / activeChallenge.days * 100}%`}} /></div><strong aria-label={`Tag ${day}, Performance ${performance} Prozent`}>{day} / {performance} %</strong></div>
+        </section>;
+      })()}
 
       {athleteId && !profileOpen && <section className="historySection">
         <div className="historyHeading">
@@ -872,7 +899,7 @@ export default function Home() {
                     <strong>{entry.setReps.length > 1 ? `${entry.reps.toLocaleString(locale)} (${entry.setReps.join(" + ")})` : entry.reps.toLocaleString(locale)} <small>Push-ups</small></strong>
                     <span className="entryMeta"><time dateTime={entry.createdAt}>{formatEntryTime(entry.createdAt, locale)}</time><small> · {entry.editedAt ? t("corrected") : t("stored")}{entry.hasEvidence && ` · ${t("withVideo")}`}</small></span>
                     <div>
-                      {entry.hasEvidence && <button type="button" onClick={() => void openEvidence(entry.id)} aria-label="Video-Nachweis ansehen"><Video size={18} /></button>}
+                      {entry.hasEvidence && <a href={`/api/evidence?entryId=${entry.id}`} target="_blank" rel="noreferrer" aria-label="Video-Nachweis ansehen"><Video size={18} /></a>}
                       {entry.setReps.length === 1 && <button onClick={() => correctEntry(entry)} aria-label="Eintrag korrigieren"><Pencil size={18} /></button>}
                       <button className="deleteAction" onClick={() => deleteEntry(entry)} aria-label="Eintrag löschen"><Trash2 size={18} /></button>
                     </div>

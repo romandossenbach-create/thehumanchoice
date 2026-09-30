@@ -1,3 +1,5 @@
+import { canViewAthletePerformance, PRIVATE_ACTIVITY_MESSAGE } from "../../performance-visibility";
+import { localDayKey } from "../../local-date";
 import { env } from "cloudflare:workers";
 import { getSupabaseUser } from "../../supabase-server";
 
@@ -34,15 +36,15 @@ export async function GET(request: Request) {
     const entryId = Number(new URL(request.url).searchParams.get("entryId"));
     if (!Number.isInteger(entryId)) return new Response("Ungültiger Eintrag.", { status: 400 });
     const user = await getSupabaseUser(request);
-    const row = await env.DB.prepare("SELECT e.evidence_key AS evidenceKey, e.evidence_type AS evidenceType FROM entries e JOIN athletes a ON a.id = e.athlete_id WHERE e.id = ? AND (a.private_mode = 0 OR a.owner_user_id = ?)").bind(entryId, user?.id || "").first<{ evidenceKey: string | null; evidenceType: string | null }>();
+    const row = await env.DB.prepare("SELECT e.evidence_key AS evidenceKey, e.evidence_type AS evidenceType, e.entry_date AS entryDate, a.owner_user_id AS ownerUserId, a.private_mode AS privateMode, a.training_log_public AS permanentlyPublic, datetime(a.training_log_public_until) > CURRENT_TIMESTAMP AS temporarilyPublic, a.training_log_public_scope AS publicScope FROM entries e JOIN athletes a ON a.id = e.athlete_id WHERE e.id = ?").bind(entryId).first<{ evidenceKey: string | null; evidenceType: string | null; entryDate:string; ownerUserId:string; privateMode:number; permanentlyPublic:number; temporarilyPublic:number; publicScope:string }>();
     if (!row?.evidenceKey) return new Response("Kein Video vorhanden.", { status: 404 });
+    if (!canViewAthletePerformance(user, row) || (user?.id !== row.ownerUserId && row.publicScope === "today" && row.entryDate !== localDayKey())) return new Response(PRIVATE_ACTIVITY_MESSAGE, {status:403, headers:{"cache-control":"private, no-store"}});
     const object = await env.BUCKET.get(row.evidenceKey);
     if (!object) return new Response("Video nicht gefunden.", { status: 404 });
     return new Response(object.body, {
       headers: {
         "content-type": row.evidenceType || object.httpMetadata?.contentType || "video/mp4",
         "cache-control": "private, no-store",
-        "vary": "Authorization",
         "content-disposition": "inline",
       },
     });

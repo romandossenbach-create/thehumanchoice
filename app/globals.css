@@ -8,9 +8,17 @@ main { display:flex; flex-direction:column; width:100%; min-width:0; min-height:
 .topbar { order:0; }
 .counterSection { order:1; }
 .statsStrip { order:2; }
-.rankingSection { order:3; }
-.projectionSection { order:4; }
-.historySection { order:5; }
+.pushChallengeCard { order:3; }
+.rankingSection { order:5; }
+.projectionSection { order:6; }
+.historySection { order:4; }
+.pushChallengeCard { position:relative; top:-2mm; width:min(1120px,calc(100% - 32px)); margin:0 auto 30px; padding:3px 0; color:#58e0d2; display:grid; gap:1mm; }
+.pushChallengeMetric { display:grid; grid-template-columns:20px minmax(0,1fr) 140px; align-items:center; gap:8px; min-width:0; line-height:1.1; }
+.pushChallengeMetric span { font-size:12px; font-weight:800; letter-spacing:.02em; }
+.pushChallengeMetric strong { font-size:clamp(12px,2.8vw,17px); font-weight:800; text-align:left; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.pushChallengeTrack { height:3mm; min-width:0; overflow:hidden; border-radius:99px; background:rgba(180,194,197,.25); }
+.pushChallengeTrack div { height:100%; border-radius:inherit; background:linear-gradient(90deg,#d93535 0%,#ed782a 24%,#f5d948 44%,#9add62 64%,#3fa85b 82%,#086c48 100%); }
+@media(max-width:600px) { .pushChallengeCard { margin:-16px auto 28px; padding:3px 0; } .pushChallengeMetric { grid-template-columns:15px minmax(0,1fr) 118px; gap:5px; } .pushChallengeMetric span { font-size:10px; } .pushChallengeMetric strong { font-size:12px; } }
 .rulesSection { order:6; }
 footer { order:7; }
 button,input { font:inherit; }
@@ -315,12 +323,14 @@ body:has(.morningGreetingDialog) [data-slot="dialog-overlay"] {
 .athlete small { color:var(--muted); }
 .athleteName a { color:var(--lime); text-decoration:underline; text-underline-offset:3px; }
 .sharedLogPage { width:min(760px,calc(100% - 28px)); margin:0 auto 60px; }
-.sharedLogHero { padding:18px 0 20px; }
+.sharedLogHero { padding:18px 0 12px; }
 .leaveSharedLog { min-height:42px; margin:0 0 26px auto; padding:0 15px; display:flex; align-items:center; justify-content:center; gap:8px; border:1px solid #789083; border-radius:12px; color:var(--ink); background:var(--panel); font-weight:800; cursor:pointer; }
 .leaveSharedLog:hover,.leaveSharedLog:focus-visible { border-color:var(--lime); outline:none; }
 .sharedLogHero .eyebrow { justify-content:flex-start; }
-.sharedLogHero h1 { font-size:clamp(38px,8vw,68px); }
+.sharedLogHero .eyebrow { margin-bottom:8px; }
 .sharedLogHero strong { color:var(--lime); }
+.sharedChallenge { margin:0 0 18px; padding:3px 0; display:grid; gap:1mm; color:#58e0d2; }
+@media(max-width:600px) { .sharedChallenge .pushChallengeMetric { grid-template-columns:15px minmax(0,1fr) 118px; gap:5px; } .sharedChallenge .pushChallengeMetric span { font-size:10px; } .sharedChallenge .pushChallengeMetric strong { font-size:12px; } }
 .sharedHistory { max-height:none; min-height:0; overflow:visible; }
 body:has(.sharedLogPage)>.thc-menu-button,body:has(.sharedLogPage)>.thc-local-clock,body:has(.sharedLogPage)>.thc-shared-shortcuts,body:has(.sharedLogPage)>.thc-creator-signature { display:none!important; }
 .sharedSetLine { padding:8px; display:grid; gap:8px; color:var(--muted); font-size:16px; }

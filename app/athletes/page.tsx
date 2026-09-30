@@ -63,7 +63,7 @@ export default function AthletesPage() {
   const [genderFilter, setGenderFilter] = useState<"all"|"male"|"female">("all");
   useEffect(() => {
     let active = true;
-    const refresh = () => authorizedFetch("/api/leaderboard", { cache:"no-store" }).then(async (r) => await r.json() as {leaders?:Leader[];ownAthlete?:Leader|null}).then((d) => { if (active) { setLeaders(d.leaders || []); setOwnPerformance(d.ownAthlete || null); } }).catch(() => {}).finally(() => { if (active) setLoading(false); });
+    const refresh = () => authorizedFetch("/api/leaderboard?owner=1", { cache:"no-store" }).then(async (r) => await r.json() as {leaders?:Leader[];ownerPerformance?:Leader|null}).then((d) => { if (active) { setLeaders(d.leaders || []); setOwnPerformance(d.ownerPerformance || null); } }).catch(() => {}).finally(() => { if (active) setLoading(false); });
     void initializeSession().then(refresh);
     const timer = window.setInterval(refresh, 60_000);
     return () => { active = false; window.clearInterval(timer); };

@@ -1,6 +1,7 @@
+import { canViewAthletePerformance, PRIVATE_ACTIVITY_MESSAGE } from "../../performance-visibility";
 import { env } from "cloudflare:workers";
 import { getSupabaseUser } from "../../supabase-server";
-import { localDayKey } from "../../local-date";
+import { localDayKey, validTimeZone } from "../../local-date";
 import { COMPOSITE_SESSIONS, singleSetRepetitions } from "../../single-set";
 
 const validId = (value: unknown): value is string => typeof value === "string" && /^[a-zA-Z0-9-]{20,64}$/.test(value);
@@ -19,8 +20,7 @@ export async function GET(request: Request) {
     const access = await env.DB.prepare("SELECT private_mode AS privateMode, owner_user_id AS ownerUserId, training_log_public AS permanentlyPublic, (datetime(training_log_public_until) > CURRENT_TIMESTAMP) AS temporarilyPublic, training_log_public_scope AS publicScope FROM athletes WHERE id = ?").bind(athleteId).first<{privateMode:number;ownerUserId:string;permanentlyPublic:number;temporarilyPublic:number;publicScope:string}>();
     if (!access) return Response.json({ error:"Athlet nicht gefunden." }, { status:404 });
     const isOwner = Boolean(user && access.ownerUserId === user.id);
-    if (!isOwner && access.privateMode) return Response.json({ error:"Athlet nicht gefunden." }, { status:404, headers:{"cache-control":"private, no-store"} });
-    if (!isOwner && !Boolean(access.permanentlyPublic) && !Boolean(access.temporarilyPublic)) return Response.json({ error:"Dieses Trainingsbuch ist nicht freigegeben." }, { status:403, headers:{"cache-control":"private, no-store"} });
+    if (!canViewAthletePerformance(user, access)) return Response.json({ error:PRIVATE_ACTIVITY_MESSAGE }, { status:403, headers:{"cache-control":"private, no-store"} });
     const today = new Intl.DateTimeFormat("sv-SE", { timeZone:"Europe/Zurich", year:"numeric", month:"2-digit", day:"2-digit" }).format(new Date());
     const visibleAsCommunity = !isOwner;
     const todayOnly = visibleAsCommunity && access.publicScope === "today";
@@ -30,7 +30,14 @@ export async function GET(request: Request) {
       : env.DB.prepare(`SELECT id, request_id AS requestId, reps, entry_date AS entryDate, created_at AS createdAt, edited_at AS editedAt, evidence_key IS NOT NULL AS hasEvidence FROM entries WHERE athlete_id = ? ORDER BY entry_date DESC, created_at DESC, id DESC LIMIT ? OFFSET ?`).bind(athleteId, pageSize, offset);
     const result = await statement.all();
     const entries = result.results.map((row) => ({ ...row, setReps: singleSetRepetitions(String(row.requestId), Number(row.reps)) }));
-    return Response.json({ entries, nextOffset:result.results.length === pageSize ? offset + pageSize : null, readOnly:visibleAsCommunity }, { headers:{"cache-control":"private, no-store"} });
+    const challenge = offset === 0 && (isOwner || !access.privateMode) ? await env.DB.prepare(`SELECT days, target, start, total, time_zone AS timeZone FROM challenges WHERE owner_user_id = ? LIMIT 1`).bind(access.ownerUserId).first<{days:number;target:number;start:string;total:number;timeZone:string}>() : null;
+    const challengeZone = validTimeZone(challenge?.timeZone);
+    const startKey = challenge ? localDayKey(new Date(challenge.start), challengeZone) : "";
+    const challengeToday = localDayKey(new Date(), challengeZone);
+    const challengeDay = challenge ? Math.floor((Date.parse(`${challengeToday}T12:00:00Z`) - Date.parse(`${startKey}T12:00:00Z`)) / 86400000) + 1 : 0;
+    const activeChallenge = challenge && challenge.days > 0 && challenge.target > 0 && challengeDay >= 1 && challengeDay <= challenge.days
+      ? { days:challenge.days, target:challenge.target, total:challenge.total, day:challengeDay } : null;
+    return Response.json({ entries, nextOffset:result.results.length === pageSize ? offset + pageSize : null, readOnly:visibleAsCommunity, challenge:activeChallenge }, { headers:{"cache-control":"private, no-store"} });
   } catch (error) {
     console.error("history GET failed", error);
     return Response.json({ error: "Trainingshistorie nicht verfügbar." }, { status: 500 });

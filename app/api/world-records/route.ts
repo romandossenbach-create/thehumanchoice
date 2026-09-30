@@ -57,3 +57,4 @@ export async function GET(request:Request) {
   }));
   return Response.json({categories:result}, {headers:{"cache-control":"private, no-store", "vary":"Authorization"}});
 }
+

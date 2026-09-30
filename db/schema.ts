@@ -52,8 +52,41 @@ export const challenges = sqliteTable("challenges", {
   total: integer("total").notNull().default(0),
   today: integer("today").notNull().default(0),
   todayDate: text("today_date").notNull(),
+  timeZone: text("time_zone").notNull().default("Europe/Zurich"),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const athleteHistory = sqliteTable("athlete_history", {
+  activityId: text("activity_id").primaryKey(),
+  athleteId: text("athlete_id").notNull().references(() => athletes.id),
+  activityType: text("activity_type").notNull(),
+  challengeType: text("challenge_type"),
+  snapshotJson: text("snapshot_json").notNull(),
+  status: text("status").notNull(),
+  verificationStatus: text("verification_status").notNull().default("UNVERIFIED"),
+  visibility: text("visibility").notNull().default("PRIVATE"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [index("idx_athlete_history_athlete_created").on(table.athleteId, table.createdAt)]);
+
+export const athleteHistorySnapshots = sqliteTable("athlete_history_snapshots", {
+  id: integer("id").primaryKey({ autoIncrement:true }),
+  activityId: text("activity_id").notNull().references(() => athleteHistory.activityId),
+  snapshotType: text("snapshot_type").notNull(),
+  snapshotJson: text("snapshot_json").notNull(),
+  visibility: text("visibility").notNull().default("PRIVATE"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [index("idx_history_snapshots_activity").on(table.activityId)]);
+
+export const athleteHistoryAudit = sqliteTable("athlete_history_audit", {
+  id: integer("id").primaryKey({ autoIncrement:true }),
+  activityId: text("activity_id").notNull().references(() => athleteHistory.activityId),
+  oldValue: text("old_value").notNull(),
+  newValue: text("new_value").notNull(),
+  reason: text("reason").notNull(),
+  actorUserId: text("actor_user_id").notNull(),
+  action: text("action").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [index("idx_history_audit_activity").on(table.activityId)]);
 
 export const roadPlans = sqliteTable("road_plans", {
   ownerUserId: text("owner_user_id").primaryKey(),

@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ff77430b-2ab6-4e9f-b7a6-1b98209f0090",
-  "prevId": "c06346e6-6999-48a8-97d4-c99ff6883b85",
+  "id": "7de89791-5232-4b89-b3ad-37731eb5b212",
+  "prevId": "ff77430b-2ab6-4e9f-b7a6-1b98209f0090",
   "tables": {
     "athlete_history": {
       "name": "athlete_history",
@@ -368,6 +368,14 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "private_mode": {
+          "name": "private_mode",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
         },
         "training_log_public": {
           "name": "training_log_public",

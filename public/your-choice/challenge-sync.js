@@ -2,7 +2,7 @@ const STATE_KEY = "your-choice-challenge-v1";
 const ACCESS_KEY = "pushup-supabase-access-token";
 const REFRESH_KEY = "pushup-supabase-refresh-token";
 const SUPABASE_URL = "https://tlcuogpjvckiyaommofm.supabase.co";
-const SUPABASE_ANON_KEY = "__SUPABASE_ANON_KEY__";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsY3VvZ3BqdmNraXlhb21tb2ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3ODcwODksImV4cCI6MjEwNTM2MzA4OX0.j9E6yPvgc119EUh8JNMzW272WBrIknUKHSj0QKGh08Q";
 
 function readState() {
   try { return JSON.parse(localStorage.getItem(STATE_KEY) || "null"); } catch { return null; }
@@ -49,6 +49,7 @@ async function saveStateToAccount() {
       total: Math.max(0, Number(state.total) || 0),
       today: Math.max(0, Number(state.today) || 0),
       todayDate: state.todayDate || (()=>{const now=new Date();return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`})(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     }),
   });
 }

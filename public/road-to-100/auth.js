@@ -1,5 +1,5 @@
 const SUPABASE_URL="https://tlcuogpjvckiyaommofm.supabase.co";
-const SUPABASE_ANON_KEY="__SUPABASE_ANON_KEY__";
+const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsY3VvZ3BqdmNraXlhb21tb2ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3ODcwODksImV4cCI6MjEwNTM2MzA4OX0.j9E6yPvgc119EUh8JNMzW272WBrIknUKHSj0QKGh08Q";
 const HUMAN_CHOICE="https://pushup-world-ranking.roman-dossenbach.chatgpt.site";
 const ACCESS_KEY="pushup-supabase-access-token";
 const REFRESH_KEY="pushup-supabase-refresh-token";

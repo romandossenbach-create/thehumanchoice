@@ -16,3 +16,4 @@ export default function ProfileImage({src, ...props}: ImgHTMLAttributes<HTMLImag
   }, [src]);
   return <img {...props} src={url || "/profile-placeholder-globe.png"} />;
 }
+

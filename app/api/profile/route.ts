@@ -37,8 +37,9 @@ export async function POST(request: Request) {
     return roadCorsJson(request, { error:"Name, Land und Geschlecht werden benötigt." }, { status:400 });
   }
   const existing = await env.DB.prepare(
-    "SELECT id, athlete_number AS athleteNumber FROM athletes WHERE owner_user_id = ? LIMIT 1",
-  ).bind(user.id).first<{id:string;athleteNumber:number}>();
+    "SELECT id, athlete_number AS athleteNumber, private_mode AS privateMode FROM athletes WHERE owner_user_id = ? LIMIT 1",
+  ).bind(user.id).first<{id:string;athleteNumber:number;privateMode:number}>();
+  const privateMode = Number(existing?.privateMode || 0);
   let athleteNumber = Number(existing?.athleteNumber || 0);
   if (!athleteNumber) {
     const allocation = await env.DB.prepare(
@@ -47,11 +48,14 @@ export async function POST(request: Request) {
     athleteNumber = Number(allocation?.athleteNumber || 0);
   }
   if (!athleteNumber) return roadCorsJson(request, { error:"Athleten-ID konnte nicht vergeben werden." }, { status:500 });
-  const id = existing?.id || crypto.randomUUID();
+  const requestedId = cleanText(body.athleteId, 64);
+  const id = existing?.id || (/^[a-zA-Z0-9-]{20,64}$/.test(requestedId) ? requestedId : crypto.randomUUID());
+  const claimed = await env.DB.prepare("SELECT owner_user_id AS ownerUserId FROM athletes WHERE id = ?").bind(id).first<{ownerUserId:string}>();
+  if (claimed && claimed.ownerUserId !== user.id) return roadCorsJson(request, {error:"Keine Berechtigung."}, {status:403});
   await env.DB.prepare(
-    "INSERT INTO athletes (id, athlete_number, name, last_name, country, gender, birth_date, owner_user_id, training_log_public, training_log_public_scope, training_log_public_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, last_name=excluded.last_name, country=excluded.country, gender=excluded.gender, birth_date=excluded.birth_date, owner_user_id=excluded.owner_user_id, training_log_public=excluded.training_log_public, training_log_public_scope=excluded.training_log_public_scope, training_log_public_until=excluded.training_log_public_until",
-  ).bind(id, athleteNumber, name, lastName, country, gender, birthDate, user.id, trainingLogPublic, trainingLogPublicScope, trainingLogPublicUntil).run();
-  return roadCorsJson(request, { profile:{ id, athleteNumber, name, lastName, country, gender, birthDate, trainingLogPublic:Boolean(trainingLogPublic), trainingLogPublicScope, trainingLogPublicUntil } });
+    "INSERT INTO athletes (id, athlete_number, name, last_name, country, gender, birth_date, owner_user_id, training_log_public, training_log_public_scope, training_log_public_until, private_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, last_name=excluded.last_name, country=excluded.country, gender=excluded.gender, birth_date=excluded.birth_date, owner_user_id=excluded.owner_user_id, training_log_public=excluded.training_log_public, training_log_public_scope=excluded.training_log_public_scope, training_log_public_until=excluded.training_log_public_until, private_mode=excluded.private_mode",
+  ).bind(id, athleteNumber, name, lastName, country, gender, birthDate, user.id, trainingLogPublic, trainingLogPublicScope, trainingLogPublicUntil, privateMode).run();
+  return roadCorsJson(request, { profile:{ id, athleteNumber, name, lastName, country, gender, birthDate, privateMode:Boolean(privateMode), trainingLogPublic:Boolean(trainingLogPublic), trainingLogPublicScope, trainingLogPublicUntil } });
 }
 
 export async function DELETE(request: Request) {

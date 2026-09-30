@@ -3,7 +3,7 @@ import "./challenge-sync.js";
 
 const SUPABASE_URL = "https://tlcuogpjvckiyaommofm.supabase.co",
   SUPABASE_ANON_KEY =
-    "__SUPABASE_ANON_KEY__",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsY3VvZ3BqdmNraXlhb21tb2ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3ODcwODksImV4cCI6MjEwNTM2MzA4OX0.j9E6yPvgc119EUh8JNMzW272WBrIknUKHSj0QKGh08Q",
   HUMAN = "https://pushup-world-ranking.roman-dossenbach.chatgpt.site";
 const ACCESS = "pushup-supabase-access-token",
   REFRESH = "pushup-supabase-refresh-token",

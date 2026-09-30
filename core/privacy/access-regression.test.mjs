@@ -10,10 +10,22 @@ const other = '33333333-3333-4333-8333-333333333333';
 const otherUser = 'second-athlete-user';
 function setup(privateMode = 1) {
   const db = new DatabaseSync(':memory:');
-  for (const file of readdirSync('drizzle').filter(f => /^00\d\d.*sql$/.test(f)).sort()) {
-    if (file.startsWith('0016')) continue;
-    db.exec(readFileSync('drizzle/'+file,'utf8'));
+  const schema = JSON.parse(readFileSync('drizzle/meta/0017_snapshot.json', 'utf8'));
+  for (const table of Object.values(schema.tables)) {
+    const columns = Object.values(table.columns).map(column => {
+      let definition = `"${column.name}" ${column.type}`;
+      if (column.primaryKey) definition += ' PRIMARY KEY';
+      if (column.autoincrement) definition += ' AUTOINCREMENT';
+      if (column.notNull) definition += ' NOT NULL';
+      if (column.default !== undefined) definition += ` DEFAULT ${column.default}`;
+      return definition;
+    });
+    db.exec(`CREATE TABLE "${table.name}" (${columns.join(', ')})`);
+    for (const index of Object.values(table.indexes)) {
+      db.exec(`CREATE ${index.isUnique ? 'UNIQUE ' : ''}INDEX "${index.name}" ON "${table.name}" (${index.columns.map(column => `"${column}"`).join(', ')})${index.where ? ` WHERE ${index.where}` : ''}`);
+    }
   }
+  db.prepare('INSERT INTO athlete_number_sequence (id,next_number) VALUES (1,10)').run();
   db.prepare('INSERT INTO athletes (id,name,last_name,country,gender,athlete_number,owner_user_id,training_log_public) VALUES (?,?,?,?,?,?,?,1)').run(roman,'Roman','Dossenbach','Schweiz','male',1,romanUser);
   db.prepare('INSERT INTO athletes (id,name,last_name,country,gender,athlete_number,owner_user_id,training_log_public) VALUES (?,?,?,?,?,?,?,1)').run(other,'Second','Athlete','Germany','male',9,otherUser);
   db.prepare('INSERT INTO entries (athlete_id,request_id,reps,entry_date,evidence_key) VALUES (?,?,?,?,?)').run(roman,'roman-entry-000000000000000000',100,'2026-09-30','private-video');
@@ -22,13 +34,7 @@ function setup(privateMode = 1) {
   db.prepare('INSERT INTO challenges (owner_user_id,days,target,start,total,today,today_date) VALUES (?,?,?,?,?,?,?)').run(romanUser,100,100000,'2026-08-06',59646,100,'2026-09-30');
   const snapshot = () => JSON.stringify({entries:db.prepare('SELECT * FROM entries ORDER BY id').all(),challenges:db.prepare('SELECT * FROM challenges').all()});
   const before = snapshot();
-  const athletesBeforeMigration = JSON.stringify(db.prepare('SELECT * FROM athletes ORDER BY id').all());
-  db.exec(readFileSync('drizzle/0016_private_mode.sql','utf8'));
-  const athletesAfterMigration = db.prepare('SELECT * FROM athletes ORDER BY id').all();
-  // Schema migration must not activate privacy or alter any existing athlete data.
-  assert.equal(JSON.stringify(athletesAfterMigration.map(({private_mode, ...athlete}) => athlete)), athletesBeforeMigration);
-  assert.ok(athletesAfterMigration.every(athlete => athlete.private_mode === 0));
-  // Prepare privacy fixtures explicitly, independently of schema migration behavior.
+  // Privacy fixtures are explicit; no migration is executed or depended on.
   db.prepare('UPDATE athletes SET private_mode = ? WHERE id = ?').run(privateMode, roman);
   db.prepare('UPDATE athletes SET private_mode = 0 WHERE id = ?').run(other);
   const DB = { prepare(sql) {
@@ -44,7 +50,8 @@ function setup(privateMode = 1) {
     new Function('require','exports',js)((id)=> {
       if(id==='cloudflare:workers')return {env};
       if(id.includes('supabase-server'))return {async getSupabaseUser(request){const id=request.headers.get('authorization')?.replace('Bearer ','');return id?{id}:null}};
-      if(id.includes('cors'))return {roadCorsJson:(request,body,init)=>Response.json(body,init)};
+      if(id.includes('cors'))return {roadCorsJson:(request,body,init)=>Response.json(body,init),roadCorsOptions:()=>new Response(null,{status:204})};
+      if(id.includes('performance-visibility')) {const module={};new Function('exports',ts.transpileModule(readFileSync('app/performance-visibility.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(module);return module;}
       if(id.includes('local-date'))return {localDayKey:()=> '2026-09-30',localMonthKey:()=> '2026-09',validTimeZone:()=> 'Europe/Zurich'};
       if(id.includes('single-set'))return {singleSetRepetitions:(id,reps)=>[reps],COMPOSITE_SESSIONS:{}};
       throw new Error('Unexpected import '+id);
@@ -55,7 +62,7 @@ function setup(privateMode = 1) {
   return {db,snapshot,before,route,req};
 }
 
-test('Schema migration defaults athletes to PUBLIC and preserves all athlete/training/challenge rows',()=> {
+test('V277 schema fixture defaults athletes to PUBLIC and preserves all training/challenge rows',()=> {
  const {db,snapshot,before}=setup(0);assert.equal(snapshot(),before);
  assert.equal(db.prepare('SELECT private_mode FROM athletes WHERE id=?').get(roman).private_mode,0);
  assert.equal(db.prepare('SELECT private_mode FROM athletes WHERE id=?').get(other).private_mode,0);
@@ -64,26 +71,57 @@ test('Schema migration defaults athletes to PUBLIC and preserves all athlete/tra
 test('Anonymous and normal second athlete cannot receive private rankings or totals; owner receives own values separately',async()=> {
  const {route,req}=setup();const api=route('app/api/leaderboard/route.ts');
  for(const user of [undefined,otherUser,romanUser]){
-  const response=await api.GET(req('/api/leaderboard',user));assert.equal(response.status,200);const data=await response.json();
+  const response=await api.GET(req('/api/leaderboard?owner=1',user));assert.equal(response.status,200);const data=await response.json();
   assert.deepEqual(data.leaders.map(row=>row.id),[other]);assert.equal(data.summary.total,40);assert.equal(data.summary.month,40);assert.equal(data.summary.athletes,1);
   assert.ok(!JSON.stringify(data.leaders).includes(roman));assert.ok(!JSON.stringify(data).includes('ownerUserId'));
-  if(user===romanUser){assert.equal(data.ownAthlete.id,roman);assert.equal(data.ownAthlete.total,78205);assert.equal(data.ownAthlete.personalBest,111);assert.equal(data.ownAthlete.privateMode,true)}
-  else assert.notEqual(data.ownAthlete?.id,roman);
+  if(user===romanUser){assert.equal(data.ownerPerformance.id,roman);assert.equal(data.ownerPerformance.total,78205);assert.equal(data.ownerPerformance.personalBest,111);assert.ok(!Object.hasOwn(data.ownerPerformance,'privateMode'))}
+  else assert.notEqual(data.ownerPerformance?.id,roman);
   assert.match(response.headers.get('cache-control'),/no-store/);
  }
 });
 
 test('Private history is blocked even when sharing is permanent; owner retains all sets',async()=> {
  const {route,req}=setup();const api=route('app/api/history/route.ts');
- for(const user of [undefined,otherUser]){const response=await api.GET(req('/api/history?athleteId='+roman,user));assert.equal(response.status,404);assert.ok(!JSON.stringify(await response.json()).includes('100'))}
+ for(const user of [undefined,otherUser]){const response=await api.GET(req('/api/history?athleteId='+roman,user));assert.equal(response.status,403);assert.ok(!JSON.stringify(await response.json()).includes('100'))}
  const response=await api.GET(req('/api/history?athleteId='+roman,romanUser));assert.equal(response.status,200);const data=await response.json();assert.equal(data.entries[0].reps,100);assert.equal(data.readOnly,false);
+});
+
+test('V277 owner data requires owner=1 and never enters the public leaders',async()=> {
+ const {route,req}=setup();const api=route('app/api/leaderboard/route.ts');
+ const publicData=await (await api.GET(req('/api/leaderboard',romanUser))).json();
+ assert.equal(publicData.ownerPerformance,null);assert.ok(!Object.hasOwn(publicData,'ownAthlete'));
+ const ownerData=await (await api.GET(req('/api/leaderboard?owner=1',romanUser))).json();
+ assert.equal(ownerData.ownerPerformance.id,roman);assert.ok(!ownerData.leaders.some(row=>row.id===roman));
+});
+
+test('V277 requested IDs are retained for new profiles and foreign ownership is rejected',async()=> {
+ const {db,route,req}=setup();const api=route('app/api/profile/route.ts');
+ const requested='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const body={athleteId:requested,name:'New',country:'Germany',gender:'male'};
+ const created=await api.POST(req('/api/profile','new-athlete-user','POST',body));
+ assert.equal(created.status,200);assert.equal((await created.json()).profile.id,requested);
+ assert.equal((await api.POST(req('/api/profile','attacker-without-profile','POST',{...body,athleteId:roman}))).status,403);
+ assert.equal(db.prepare('SELECT owner_user_id FROM athletes WHERE id=?').get(roman).owner_user_id,romanUser);
+});
+
+test('Public evidence still requires an active sharing grant and respects today-only scope',async()=> {
+ const {db,route,req}=setup(0);const api=route('app/api/evidence/route.ts');
+ db.prepare('UPDATE athletes SET training_log_public=0,training_log_public_until=NULL WHERE id=?').run(roman);
+ assert.equal((await api.GET(req('/api/evidence?entryId=1',otherUser))).status,403);
+ db.prepare("UPDATE athletes SET training_log_public_until=datetime('now','+1 hour'),training_log_public_scope='today' WHERE id=?").run(roman);
+ assert.equal((await api.GET(req('/api/evidence?entryId=1',otherUser))).status,200);
+ db.prepare("UPDATE entries SET entry_date='2026-09-29' WHERE athlete_id=?").run(roman);
+ assert.equal((await api.GET(req('/api/evidence?entryId=1',otherUser))).status,403);
+ assert.equal((await api.GET(req('/api/evidence?entryId=1',romanUser))).status,200);
+ db.prepare("UPDATE athletes SET training_log_public_until=datetime('now','-1 hour'),training_log_public_scope='all' WHERE id=?").run(roman);
+ assert.equal((await api.GET(req('/api/evidence?entryId=1',otherUser))).status,403);
 });
 
 test('Direct private evidence and profile-photo URLs deny second account and anonymous requests',async()=> {
  const {route,req}=setup();
  for(const [file,path] of [['evidence','/api/evidence?entryId=1'],['profile-photo','/api/profile-photo?athleteId='+roman]]){
   const api=route('app/api/'+file+'/route.ts');
-  for(const user of [undefined,otherUser])assert.equal((await api.GET(req(path,user))).status,404);
+  for(const user of [undefined,otherUser])assert.equal((await api.GET(req(path,user))).status,file==='evidence'?403:404);
   const owner=await api.GET(req(path,romanUser));assert.equal(owner.status,200);assert.equal(await owner.text(),'media');assert.match(owner.headers.get('cache-control'),/no-store/);
  }
 });

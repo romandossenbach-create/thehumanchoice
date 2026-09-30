@@ -1,0 +1,65 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
+import vm from 'node:vm';
+import ts from 'typescript';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+const db=new DatabaseSync(':memory:');
+for(const file of readdirSync('drizzle').filter(x=>x.endsWith('.sql') && !x.startsWith('0017_')).sort()) db.exec(readFileSync(`drizzle/${file}`,'utf8'));
+const owner='owner-account', second='normal-second-account';
+const aid='0431b2b7-b3d3-4666-b5ad-f0d53709b686';
+db.prepare(`INSERT INTO athletes(id,athlete_number,name,country,owner_user_id,training_log_public) VALUES(?,1,'Roman','CH',?,1)`).run(aid,owner);
+db.prepare(`INSERT INTO athletes(id,athlete_number,name,country,owner_user_id,training_log_public) VALUES(?,2,'Second','DE',?,1)`).run('22222222-2222-2222-2222-222222222222',second);
+db.prepare(`INSERT INTO entries(athlete_id,request_id,reps,entry_date,evidence_key) VALUES(?, 'test-entry',30,'2026-09-29','video')`).run(aid);
+db.prepare(`INSERT INTO challenges(owner_user_id,days,target,start,total,today_date) VALUES(?,100,100000,'2026-09-01',30,'2026-09-29')`).run(owner);
+db.prepare(`INSERT INTO athlete_history(activity_id,athlete_id,activity_type,snapshot_json,status) VALUES('archive',?,'PERSONAL_CHALLENGE','{"total":30}','COMPLETED')`).run(aid);
+const preservedBeforeMigration = db.prepare('SELECT count(*) n FROM entries').get().n;
+db.exec(readFileSync('drizzle/0017_rapid_microbe.sql','utf8'));
+assert.equal(db.prepare('SELECT private_mode p FROM athletes WHERE id=?').get(aid).p,1);
+assert.equal(db.prepare('SELECT count(*) n FROM entries').get().n,preservedBeforeMigration);
+db.prepare('UPDATE athletes SET private_mode=0 WHERE id=?').run(aid);
+const wrap=(sql,args=[])=>({bind(...next){return wrap(sql,next)},async first(){return db.prepare(sql).get(...args)||null},async all(){return {results:db.prepare(sql).all(...args)}},async run(){return {meta:db.prepare(sql).run(...args)}}});
+const env={DB:{prepare:wrap,async batch(statements){return Promise.all(statements.map(x=>x.run()))}},BUCKET:{async get(){return {body:'video bytes',httpMetadata:{contentType:'video/mp4'}}}}};
+const context=vm.createContext({Request,Response,Headers,URL,Date,Intl,console,crypto, setTimeout});
+const cache=new Map();
+async function moduleAt(file){
+ if(cache.has(file))return cache.get(file);
+ let mod;
+ if(file==='cloudflare:workers')mod=new vm.SyntheticModule(['env'],function(){this.setExport('env',env)},{context});
+ else if(file.endsWith('/supabase-server.ts'))mod=new vm.SyntheticModule(['getSupabaseUser'],function(){this.setExport('getSupabaseUser',async request=>{const id=request.headers.get('authorization')?.replace('Bearer ','');return id===owner||id===second?{id,isAdmin:false}:null})},{context});
+ else {const source=ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;mod=new vm.SourceTextModule(source,{context,identifier:file});}
+ cache.set(file,mod);
+ await mod.link((specifier,parent)=>moduleAt(specifier==='cloudflare:workers'?specifier:path.resolve(path.dirname(parent.identifier),specifier+'.ts')));
+ await mod.evaluate();return mod;
+}
+const board=(await moduleAt(path.resolve('app/api/leaderboard/route.ts'))).namespace;
+const history=(await moduleAt(path.resolve('app/api/history/route.ts'))).namespace;
+const evidence=(await moduleAt(path.resolve('app/api/evidence/route.ts'))).namespace;
+const privacy=(await moduleAt(path.resolve('app/api/privacy/route.ts'))).namespace;
+const profile=(await moduleAt(path.resolve('app/api/profile/route.ts'))).namespace;
+const req=(url,user,body)=>new Request('https://test'+url,{method:body?'PUT':'GET',headers:user?{authorization:'Bearer '+user,'content-type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
+const readBoard=async user=>(await board.GET(req('/api/leaderboard?owner=1',user))).json();
+const counts=()=>['entries','athlete_history','challenges'].map(t=>db.prepare(`SELECT count(*) n FROM ${t}`).get().n);
+const before=counts();
+assert.equal((await history.GET(req('/api/history?athleteId='+aid,second))).status,200);
+assert((await readBoard(second)).leaders.some(x=>x.id===aid));
+assert.equal((await privacy.PUT(req('/api/privacy',second,{privateMode:true}))).status,200);
+assert.equal(db.prepare('SELECT private_mode p FROM athletes WHERE id=?').get(aid).p,0);
+assert.equal((await privacy.PUT(req('/api/privacy',owner,{privateMode:true}))).status,200);
+assert.equal((await profile.GET(req('/api/profile',owner))).status,200);
+assert.equal((await (await profile.GET(req('/api/profile',owner))).json()).profile.privateMode,1);
+for(const viewer of [null,second]){
+ const data=await readBoard(viewer);assert(!data.leaders.some(x=>x.id===aid));assert.notEqual(data.ownerPerformance?.id, aid);assert.equal(data.summary.total,0);
+ assert.equal((await history.GET(req('/api/history?athleteId='+aid,viewer))).status,403);
+ assert.equal((await evidence.GET(req('/api/evidence?entryId=1',viewer))).status,403);
+}
+const owned=await readBoard(owner);assert.equal(owned.ownerPerformance.total,78135);assert(!owned.leaders.some(x=>x.id===aid));
+assert.equal((await history.GET(req('/api/history?athleteId='+aid,owner))).status,200);
+assert.equal((await evidence.GET(req('/api/evidence?entryId=1',owner))).status,200);
+assert.deepEqual(counts(),before);
+assert.equal((await privacy.PUT(req('/api/privacy',owner,{privateMode:false}))).status,200);
+assert((await readBoard(second)).leaders.some(x=>x.id===aid));
+assert.equal((await history.GET(req('/api/history?athleteId='+aid,second))).status,200);
+assert.deepEqual(counts(),before);
+assert.equal((await privacy.PUT(req('/api/privacy',null,{privateMode:true}))).status,401);
+console.log('PASS: database migrations; OFF/ON/OFF; owner; normal second viewer; anonymous; rankings; direct history; evidence; persistence; data/history/challenge preservation; unauthenticated mutation denied. Authentication mocked: this is not a live two-account test.');

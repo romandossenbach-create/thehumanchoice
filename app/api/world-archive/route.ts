@@ -7,3 +7,4 @@ export async function GET(request:Request) {
   const visible = await env.DB!.prepare("SELECT id FROM athletes WHERE id = ? AND (private_mode = 0 OR owner_user_id = ?)").bind("0431b2b7-b3d3-4666-b5ad-f0d53709b686", user?.id || "").first();
   return Response.json({points:visible ? [archive] : []}, {headers:{"cache-control":"private, no-store", "vary":"Authorization"}});
 }
+
