@@ -8,7 +8,7 @@ const roman = '0431b2b7-b3d3-4666-b5ad-f0d53709b686';
 const romanUser = '77e8d9e3-e947-4185-955f-28502e4a8deb';
 const other = '33333333-3333-4333-8333-333333333333';
 const otherUser = 'second-athlete-user';
-function setup() {
+function setup(privateMode = 1) {
   const db = new DatabaseSync(':memory:');
   for (const file of readdirSync('drizzle').filter(f => /^00\d\d.*sql$/.test(f)).sort()) {
     if (file.startsWith('0016')) continue;
@@ -22,7 +22,15 @@ function setup() {
   db.prepare('INSERT INTO challenges (owner_user_id,days,target,start,total,today,today_date) VALUES (?,?,?,?,?,?,?)').run(romanUser,100,100000,'2026-08-06',59646,100,'2026-09-30');
   const snapshot = () => JSON.stringify({entries:db.prepare('SELECT * FROM entries ORDER BY id').all(),challenges:db.prepare('SELECT * FROM challenges').all()});
   const before = snapshot();
+  const athletesBeforeMigration = JSON.stringify(db.prepare('SELECT * FROM athletes ORDER BY id').all());
   db.exec(readFileSync('drizzle/0016_private_mode.sql','utf8'));
+  const athletesAfterMigration = db.prepare('SELECT * FROM athletes ORDER BY id').all();
+  // Schema migration must not activate privacy or alter any existing athlete data.
+  assert.equal(JSON.stringify(athletesAfterMigration.map(({private_mode, ...athlete}) => athlete)), athletesBeforeMigration);
+  assert.ok(athletesAfterMigration.every(athlete => athlete.private_mode === 0));
+  // Prepare privacy fixtures explicitly, independently of schema migration behavior.
+  db.prepare('UPDATE athletes SET private_mode = ? WHERE id = ?').run(privateMode, roman);
+  db.prepare('UPDATE athletes SET private_mode = 0 WHERE id = ?').run(other);
   const DB = { prepare(sql) {
     let args=[];
     const statement={bind(...values){args=values;return statement},async first(){return db.prepare(sql).get(...args) || null},async all(){return {results:db.prepare(sql).all(...args)}},async run(){const result=db.prepare(sql).run(...args);return {meta:{changes:result.changes}}}};
@@ -47,9 +55,9 @@ function setup() {
   return {db,snapshot,before,route,req};
 }
 
-test('Migration activates only Roman and preserves all training/challenge rows',()=> {
- const {db,snapshot,before}=setup();assert.equal(snapshot(),before);
- assert.equal(db.prepare('SELECT private_mode FROM athletes WHERE id=?').get(roman).private_mode,1);
+test('Schema migration defaults athletes to PUBLIC and preserves all athlete/training/challenge rows',()=> {
+ const {db,snapshot,before}=setup(0);assert.equal(snapshot(),before);
+ assert.equal(db.prepare('SELECT private_mode FROM athletes WHERE id=?').get(roman).private_mode,0);
  assert.equal(db.prepare('SELECT private_mode FROM athletes WHERE id=?').get(other).private_mode,0);
 });
 
@@ -81,16 +89,22 @@ test('Direct private evidence and profile-photo URLs deny second account and ano
 });
 
 test('Privacy is persisted per account, rejects invalid/anonymous writes, and ignores target athlete IDs',async()=> {
- const {route,req,snapshot,before}=setup();const api=route('app/api/privacy/route.ts');
+ const {db,route,req,snapshot,before}=setup();const api=route('app/api/privacy/route.ts');
+ assert.equal(db.prepare('SELECT private_mode FROM athletes WHERE id=?').get(roman).private_mode,1);
+ assert.equal((await (await api.GET(req('/api/privacy',romanUser))).json()).privateMode,true);
+ assert.equal(db.prepare('SELECT private_mode FROM athletes WHERE id=?').get(other).private_mode,0);
+ assert.equal((await (await api.GET(req('/api/privacy',otherUser))).json()).privateMode,false);
  assert.equal((await api.PUT(req('/api/privacy',undefined,'PUT',{privateMode:false}))).status,401);
  assert.equal((await api.PUT(req('/api/privacy',romanUser,'PUT',{privateMode:'false'}))).status,400);
  await api.PUT(req('/api/privacy',otherUser,'PUT',{privateMode:false,athleteId:roman}));
  assert.equal((await (await api.GET(req('/api/privacy',romanUser))).json()).privateMode,true);
  await api.PUT(req('/api/privacy',romanUser,'PUT',{privateMode:false}));
+ assert.equal(db.prepare('SELECT private_mode FROM athletes WHERE id=?').get(roman).private_mode,0);
  // A separate request represents a new session/device, with no process-local privacy state.
  assert.equal((await (await api.GET(req('/api/privacy',romanUser))).json()).privateMode,false);
  const board=await (await route('app/api/leaderboard/route.ts').GET(req('/api/leaderboard',otherUser))).json();assert.ok(board.leaders.some(row=>row.id===roman));
  await api.PUT(req('/api/privacy',romanUser,'PUT',{privateMode:true}));
+ assert.equal(db.prepare('SELECT private_mode FROM athletes WHERE id=?').get(roman).private_mode,1);
  assert.equal((await (await api.GET(req('/api/privacy',romanUser))).json()).privateMode,true);assert.equal(snapshot(),before);
 });
 
